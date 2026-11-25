@@ -9,13 +9,18 @@ Data comes from NOAA's free [CO-OPS Tides & Currents API](https://api.tidesandcu
 ## Features
 
 - **Live beach scene**: the water sits where the tide is now, rising or falling.
+- **Predicted / Live switch**: predicted tides (astronomical forecast, ~3,500
+  stations) or the live gauge reading (measured every 6 minutes at ~300 stations),
+  with how far the water is above or below the forecast and a warning at 1 ft or
+  more (wind or storm surge). Stations without a gauge offer the nearest one.
 - **Next high / low tide** with countdowns, in the station's local time.
 - **24-hour tide chart** with a "Now" marker.
 - **Find a station** by zip code, town or beach name, or "📍 Near me".
 - **Big-swing alerts**: flags swings in the top 10% for that station this month
   (or above a size you choose), with a banner, browser notifications while the
   app is open, and an "Add to calendar" file for reminders when it's closed.
-- Installable to a phone's home screen; dark mode; shareable `?station=` links.
+- Installable to a phone's home screen; dark mode; shareable links
+  (`?station=8574680&mode=live`).
 
 ## Run locally
 
@@ -42,6 +47,7 @@ command `npm run build`, output folder `dist` (already in `netlify.toml`).
 |---|---|
 | `src/noaa.js` | NOAA API client, station list, zip lookup |
 | `src/tides.js` | Tide math (interpolation) and formatting |
+| `src/live.js` | Live gauge readings: 6-minute refresh, measured vs predicted |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
 | `src/components/` | Beach scene, chart, station picker, alerts panel |
 | `public/sw.js` | Service worker, so phones can show notifications |

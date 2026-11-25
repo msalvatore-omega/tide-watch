@@ -9,9 +9,15 @@ const ymdUTC = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.g
 
 async function getJson(url) {
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`NOAA returned HTTP ${res.status}`)
-  const json = await res.json()
-  if (json.error) throw new Error(json.error.message)
+  // NOAA reports "no data for this station" as HTTP 400 with a JSON error body.
+  const json = await res.json().catch(() => null)
+  if (!json) throw new Error(`NOAA returned HTTP ${res.status}`)
+  if (json.error) {
+    // NOAA answered but has no such data (e.g. no live gauge) — not a network problem.
+    const err = new Error(json.error.message)
+    err.noData = true
+    throw err
+  }
   return json
 }
 
@@ -60,27 +66,56 @@ export async function fetchStationInfo(stationId) {
   return { id: s.id, name: s.name, state: s.state, lat: s.lat, lng: s.lng }
 }
 
-const STATIONS_CACHE_KEY = 'tidewatch.stations.v1'
-let stationsPromise
+const stationLists = {}
 
-/** Every station that has tide predictions (~3,500). Cached in memory and localStorage. */
-export function fetchAllStations() {
-  if (stationsPromise) return stationsPromise
-  stationsPromise = (async () => {
+// Station lists change rarely: cache in memory and localStorage for a week.
+function fetchStationList(type) {
+  if (stationLists[type]) return stationLists[type]
+  const cacheKey = `tidewatch.stations.${type}.v1`
+  stationLists[type] = (async () => {
     try {
-      const cached = JSON.parse(localStorage.getItem(STATIONS_CACHE_KEY))
+      const cached = JSON.parse(localStorage.getItem(cacheKey))
       if (cached && Date.now() - cached.savedAt < 7 * 24 * 3600e3) return cached.stations
     } catch { /* storage unavailable — just fetch */ }
 
-    const json = await getJson(`${META_API}/stations.json?type=tidepredictions`)
+    const json = await getJson(`${META_API}/stations.json?type=${type}`)
     const stations = json.stations.map((s) => ({ id: s.id, name: s.name, state: s.state, lat: s.lat, lng: s.lng }))
     try {
-      localStorage.setItem(STATIONS_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), stations }))
+      localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), stations }))
     } catch { /* quota/private mode — fine */ }
     return stations
   })()
-  stationsPromise.catch(() => { stationsPromise = undefined })
-  return stationsPromise
+  stationLists[type].catch(() => { delete stationLists[type] })
+  return stationLists[type]
+}
+
+/** Every station that has tide predictions (~3,500). */
+export const fetchAllStations = () => fetchStationList('tidepredictions')
+
+/** Stations with a live water-level gauge (~300). */
+export const fetchLiveStations = () => fetchStationList('waterlevels')
+
+/**
+ * Live gauge readings (every 6 minutes, ~5-10 min delay) for the last 26 hours,
+ * plus NOAA's exact 6-minute predictions over the same span (and 8 hours ahead)
+ * so measured and predicted can be compared point for point.
+ * Readings are NOAA "preliminary" data: not yet quality-checked.
+ */
+export async function fetchLive(stationId) {
+  const begin = new Date(Date.now() - 26 * 3600e3)
+  const beginParam = encodeURIComponent(`${ymdUTC(begin)} ${pad(begin.getUTCHours())}:${pad(begin.getUTCMinutes())}`)
+  const common =
+    `${DATA_API}?datum=MLLW&units=english&time_zone=gmt&format=json` +
+    `&station=${encodeURIComponent(stationId)}&begin_date=${beginParam}&application=${APP_NAME}`
+  const [obs, pred] = await Promise.all([
+    getJson(`${common}&product=water_level&range=27`),
+    getJson(`${common}&product=predictions&range=34`),
+  ])
+  const toPoints = (rows) =>
+    (rows ?? [])
+      .filter((r) => r.v !== '' && r.v != null)
+      .map((r) => ({ time: new Date(r.t.replace(' ', 'T') + ':00Z'), height: Number(r.v) }))
+  return { observed: toPoints(obs.data), predicted: toPoints(pred.predictions) }
 }
 
 /** Great-circle distance in miles. */
