@@ -197,3 +197,130 @@ export async function fetchConditions(stationId) {
     pressure: p.length ? { mb: num(p.at(-1).v), change3h: p.length > 1 ? num(p.at(-1).v) - num(p[0].v) : null, time: time(p.at(-1)) } : null,
   }
 }
+
+// ---------- Flood levels and history ----------
+
+const mdapi = (stationId, what) => getJson(`${META_API}/stations/${encodeURIComponent(stationId)}/${what}.json?units=english`)
+
+const cache = {
+  get(key, maxAgeMs) {
+    try {
+      const c = JSON.parse(localStorage.getItem(key))
+      return c && Date.now() - c.savedAt < maxAgeMs ? c.value : null
+    } catch { return null }
+  },
+  set(key, value) {
+    try { localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), value })) } catch { /* quota/private mode */ }
+  },
+}
+const memo = new Map()
+const once = (key, fn) => {
+  if (!memo.has(key)) memo.set(key, fn().catch((e) => { memo.delete(key); throw e }))
+  return memo.get(key)
+}
+
+/** Tidal datums converted to feet above MLLW (the app's zero). */
+export const fetchDatums = (stationId) =>
+  once(`datums:${stationId}`, async () => {
+    const d = await mdapi(stationId, 'datums')
+    const get = (n) => d.datums?.find((x) => x.name === n)?.value
+    const mllw = get('MLLW')
+    if (mllw == null) return null
+    const rel = (n) => (get(n) == null ? null : Math.round((get(n) - mllw) * 100) / 100)
+    return { mllwStnd: mllw, msl: rel('MSL'), mhhw: rel('MHHW') }
+  })
+
+/**
+ * NOAA flood thresholds in feet above MLLW: { minor, moderate, major }, or null when
+ * the station has none. NOAA publishes them on the station datum, so we subtract MLLW.
+ * Prefers NOAA (NOS) high-tide-flooding levels, else the National Weather Service's.
+ */
+export const fetchFloodLevels = (stationId) =>
+  once(`flood:${stationId}`, async () => {
+    const [fl, datums] = await Promise.all([mdapi(stationId, 'floodlevels'), fetchDatums(stationId)])
+    if (!datums) return null
+    const level = (k) => {
+      const v = fl[`nos_${k}`] ?? fl[`nws_${k}`]
+      return v == null ? null : Math.round((v - datums.mllwStnd) * 100) / 100
+    }
+    const out = { minor: level('minor'), moderate: level('moderate'), major: level('major') }
+    return out.minor == null ? null : out
+  })
+
+const num = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v))
+const toTime = (t) => new Date(t.replace(' ', 'T') + ':00Z')
+
+/**
+ * Highest and lowest water for every month on record (verified data, usually up to
+ * a month or two ago). One request covers back to 1900; cached for a week.
+ */
+export const fetchMonthlyExtremes = (stationId) =>
+  once(`monthly:${stationId}`, async () => {
+    const key = `tidely.monthly.${stationId}.v1`
+    const hit = cache.get(key, 7 * 24 * 3600e3)
+    if (hit) return hit
+    const end = new Date()
+    const json = await getJson(
+      `${DATA_API}?product=monthly_mean&datum=MLLW&units=english&time_zone=gmt&format=json` +
+      `&station=${encodeURIComponent(stationId)}&begin_date=19000101&end_date=${ymdUTC(end)}&application=${APP_NAME}`,
+    )
+    const months = (json.data ?? [])
+      .map((m) => ({ y: Number(m.year), m: Number(m.month), hi: num(m.highest), lo: num(m.lowest) }))
+      .filter((m) => m.hi != null || m.lo != null)
+    cache.set(key, months)
+    return months
+  })
+
+/**
+ * Verified water levels for one month, for pinning down exact dates: the tabulated
+ * highs and lows where NOAA has them, else hourly heights (older records, e.g. 1900s).
+ */
+export const fetchMonthDetail = (stationId, y, m) =>
+  once(`month:${stationId}:${y}-${m}`, async () => {
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate()
+    const range = `&station=${encodeURIComponent(stationId)}&begin_date=${y}${pad(m)}01&end_date=${y}${pad(m)}${pad(last)}&application=${APP_NAME}`
+    const base = `${DATA_API}?datum=MLLW&units=english&time_zone=gmt&format=json${range}`
+    for (const product of ['high_low', 'hourly_height']) {
+      try {
+        const json = await getJson(`${base}&product=${product}`)
+        const rows = (json.data ?? []).filter((r) => num(r.v) != null).map((r) => ({ time: toTime(r.t), height: num(r.v) }))
+        if (rows.length) return rows
+      } catch (e) {
+        if (!e.noData) throw e
+      }
+    }
+    return []
+  })
+
+/**
+ * Daily highest/lowest measured water from `from` up to today, for the weeks NOAA
+ * hasn't verified yet. Fetched as 6-minute data in ≤31-day chunks, reduced to one
+ * max/min per day, and cached on the device for 6 hours.
+ */
+export const fetchRecentDaily = (stationId, from) =>
+  once(`recent:${stationId}:${ymdUTC(from)}`, async () => {
+    const key = `tidely.recent.${stationId}.${ymdUTC(from)}.v1`
+    const hit = cache.get(key, 6 * 3600e3)
+    if (hit) return hit.map((d) => ({ ...d, maxTime: new Date(d.maxTime), minTime: new Date(d.minTime) }))
+    const days = new Map()
+    for (let start = new Date(from); start < new Date(); start = new Date(start.getTime() + 31 * 86400e3)) {
+      const json = await getJson(
+        `${DATA_API}?product=water_level&datum=MLLW&units=english&time_zone=gmt&format=json` +
+        `&station=${encodeURIComponent(stationId)}&begin_date=${ymdUTC(start)}&range=${31 * 24}&application=${APP_NAME}`,
+      ).catch((e) => { if (e.noData) return { data: [] }; throw e })
+      for (const r of json.data ?? []) {
+        const v = num(r.v)
+        if (v == null) continue
+        const day = r.t.slice(0, 10)
+        const d = days.get(day)
+        if (!d) days.set(day, { day, max: v, maxTime: toTime(r.t), min: v, minTime: toTime(r.t) })
+        else {
+          if (v > d.max) { d.max = v; d.maxTime = toTime(r.t) }
+          if (v < d.min) { d.min = v; d.minTime = toTime(r.t) }
+        }
+      }
+    }
+    const list = [...days.values()].sort((a, b) => (a.day < b.day ? -1 : 1))
+    cache.set(key, list)
+    return list
+  })

@@ -474,3 +474,20 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 .hint-inline { color: var(--muted); font-size: 0.8rem; }
 .live-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .live-filter input { width: 20px; height: 20px; margin: 0; }
+
+/* --- Flood levels --- */
+.flood-zone { fill: #e5484d; opacity: 0.06; }
+.flood-line { stroke: #d9480f; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.chart .flood-label { font-size: 10.5px; font-weight: 700; fill: #d9480f; }
+.alert-banner.flood { background: #ffe8e0; color: #7a2309; border-color: #f4a58a; }
+.alert-banner.flood.moderate, .alert-banner.flood.major { background: #ffd6d6; color: #6b0b0b; border-color: #e5484d; }
+@media (prefers-color-scheme: dark) {
+  .alert-banner.flood { background: #3d1a10; color: #ffcbb8; border-color: #7a3a22; }
+}
+
+/* --- History --- */
+.history { margin-top: 10px; padding-bottom: 8px; }
+.facts { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.facts li { line-height: 1.4; font-size: 0.93rem; }
+.fact-label { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.small-print { font-size: 0.75rem; margin-top: 6px; }

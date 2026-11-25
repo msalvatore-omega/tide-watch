@@ -11,7 +11,7 @@ const FUTURE_H = 24
  * predictions where loaded, else interpolated from highs/lows), with the gauge's
  * measured water drawn over it when the station has a gauge.
  */
-export default function TideChart({ events, now, offsetMs, predicted, observed }) {
+export default function TideChart({ events, now, offsetMs, predicted, observed, flood }) {
   const [ref, width] = useWidth()
 
   const start = now.getTime() - PAST_H * 3600e3
@@ -27,7 +27,11 @@ export default function TideChart({ events, now, offsetMs, predicted, observed }
 
   const hs = [...samples, ...measured].map((s) => s[1])
   const lo = Math.min(...hs)
-  const hi = Math.max(...hs)
+  // Always show where minor flooding starts, so the gap to it is visible.
+  const hi = Math.max(...hs, flood?.minor != null ? flood.minor + 0.15 : -Infinity)
+  const floodLines = flood
+    ? [['Minor', flood.minor], ['Moderate', flood.moderate], ['Major', flood.major]].filter(([, v]) => v != null && v <= hi)
+    : []
   const x = (t) => PAD.left + ((t - start) / (end - start)) * (width - PAD.left - PAD.right)
   const y = (h) => PAD.top + (1 - (h - lo) / (hi - lo || 1)) * (HEIGHT - PAD.top - PAD.bottom)
   const toPath = (pts) => pts.map(([t, h], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)} ${y(h).toFixed(1)}`).join(' ')
@@ -58,6 +62,15 @@ export default function TideChart({ events, now, offsetMs, predicted, observed }
             <text x={x(t)} y={HEIGHT - 6} textAnchor="middle" className="tick">
               {formatAtStation(t, offsetMs, { hour: 'numeric' })}
             </text>
+          </g>
+        ))}
+        {floodLines.length > 0 && (
+          <rect x={PAD.left} y={PAD.top - 8} width={width - PAD.left - PAD.right} height={Math.max(0, y(flood.minor) - PAD.top + 8)} className="flood-zone" />
+        )}
+        {floodLines.map(([name, v]) => (
+          <g key={name}>
+            <line x1={PAD.left} x2={width - PAD.right} y1={y(v)} y2={y(v)} className="flood-line" />
+            <text x={width - PAD.right} y={y(v) - 4} textAnchor="end" className="flood-label">{name} flood {ft(v)}</text>
           </g>
         ))}
         <path d={toArea(samples, line)} fill="url(#chartFill)" />

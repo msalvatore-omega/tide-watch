@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
-import { tideNow, tideMood, seriesAt, formatStationTime, formatAtStation, formatCountdown, ft } from './tides.js'
+import { tideNow, tideMood, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, ft } from './tides.js'
 import { useSixMinute, useConditions, useNearestLiveGauge, liveNow, liveMood, diffText } from './live.js'
 import { isNight, sunTimes, moonPhase } from './astro.js'
 import { useFavorites } from './favorites.js'
+import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
+import HistoryFacts from './components/HistoryFacts.jsx'
 import TideScene from './components/TideScene.jsx'
 import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
@@ -92,6 +94,22 @@ export default function App() {
   const weather = useConditions(weatherGauge?.id ?? null)
 
   const tide = events ? tideNow(events, now) : null
+  const flood = useFloodLevels(stationId)
+  const todayStart = tide ? new Date(Date.parse(`${stationDate(now, tide.offsetMs)}T00:00:00Z`) - tide.offsetMs) : null
+  const historyFacts = useHistoryFacts({ stationId, enabled: Boolean(live), level: live?.height, observed: sixData?.observed, flood, todayStart })
+
+  // Flood warning: water at flood level now, or a high tide in the next 24 hours forecast
+  // to reach it (adding today's surge if the gauge is running above the forecast).
+  let floodWarning = null
+  if (flood && tide) {
+    const surge = live?.diff > 0 ? live.diff : 0
+    const nextHigh = events.find((e) => e.type === 'H' && e.time > now && e.time - now < 24 * 3600e3 && floodStage(e.height + surge, flood))
+    if (live && floodStage(live.height, flood)) {
+      floodWarning = { now: true, stage: floodStage(live.height, flood), height: live.height }
+    } else if (nextHigh) {
+      floodWarning = { event: nextHigh, stage: floodStage(nextHigh.height + surge, flood), height: nextHigh.height, withSurge: surge > 0 && !floodStage(nextHigh.height, flood) ? nextHigh.height + surge : null }
+    }
+  }
   const forecastNow = tide ? seriesAt(sixData?.predicted, now) ?? tide.height : null
   const hasCoords = station?.lat != null && tide
 
@@ -185,6 +203,18 @@ export default function App() {
 
       {tide && view && tab === 'now' && (
         <>
+          {floodWarning && (
+            <div className={`alert-banner flood ${floodWarning.stage}`} role="alert">
+              <strong>🌊 {floodWarning.now ? `${cap(floodWarning.stage)} flooding now` : `${cap(floodWarning.stage)} flooding possible`}</strong>
+              <span>
+                {floodWarning.now
+                  ? `Gauge reads ${ft(floodWarning.height)}; flooding starts at ${ft(flood.minor)}.`
+                  : floodWarning.withSurge
+                    ? `High tide ${formatStationTime(floodWarning.event.local)}: forecast ${ft(floodWarning.height)}, about ${ft(floodWarning.withSurge)} if the water stays this far above forecast. Flooding starts at ${ft(flood.minor)}.`
+                    : `High tide ${formatStationTime(floodWarning.event.local)} forecast ${ft(floodWarning.height)}; flooding starts at ${ft(flood.minor)}.`}
+              </span>
+            </div>
+          )}
           <SurgeBanner reading={live} surgeFeet={surgeFeet} />
           <AlertBanner alerts={swing.alerts} now={now} />
           <section className="scene-wrap">
@@ -240,8 +270,10 @@ export default function App() {
 
           <section className="panel">
             <h2>{hasGauge ? 'Measured vs forecast' : 'Tide forecast'}</h2>
-            <TideChart events={events} now={now} offsetMs={tide.offsetMs} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} />
+            <TideChart events={events} now={now} offsetMs={tide.offsetMs} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
           </section>
+
+          {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
 
           {station && (
             <AlertsPanel
@@ -255,7 +287,7 @@ export default function App() {
         </>
       )}
 
-      {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} />}
+      {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} flood={flood} />}
       {tide && tab === 'plan' && <Planner events={events} now={now} offsetMs={tide.offsetMs} station={station} live={live} />}
 
       {tide && (
@@ -268,6 +300,8 @@ export default function App() {
     </main>
   )
 }
+
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
 function Card({ label, big, sub, accent }) {
   return (

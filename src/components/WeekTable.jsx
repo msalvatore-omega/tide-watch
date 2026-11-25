@@ -1,8 +1,9 @@
 // Week tab: every high and low for 7 days, with sun and moon. Printable.
 import { formatStationTime, formatAtStation, stationDate, formatDay, ft } from '../tides.js'
 import { sunTimes, moonPhase } from '../astro.js'
+import { floodStage } from '../history.js'
 
-export default function WeekTable({ events, now, offsetMs, station, alerts }) {
+export default function WeekTable({ events, now, offsetMs, station, alerts, flood }) {
   const today = stationDate(now, offsetMs)
   const days = []
   for (let i = 0; i < 7; i++) days.push(stationDate(new Date(now.getTime() + i * 86400e3), offsetMs))
@@ -39,7 +40,10 @@ export default function WeekTable({ events, now, offsetMs, station, alerts }) {
                       <td className={e.type === 'H' ? 'hl high' : 'hl low'}>{e.type === 'H' ? '▲ High' : '▼ Low'}</td>
                       <td>{formatStationTime(e.local, { withDay: false })}</td>
                       <td className="num">{ft(e.height)}</td>
-                      <td className="flag">{bigEnds.has(e.time.getTime()) ? <span title="End of a big swing">⚠️</span> : ''}</td>
+                      <td className="flag">
+                        {floodStage(e.height, flood) && <span title={`${floodStage(e.height, flood)} flood level`}>🌊</span>}
+                        {bigEnds.has(e.time.getTime()) && <span title="End of a big swing">⚠️</span>}
+                      </td>
                     </tr>
                   )
                 })}
@@ -48,7 +52,10 @@ export default function WeekTable({ events, now, offsetMs, station, alerts }) {
           </div>
         )
       })}
-      <p className="hint">⚠️ ends a big swing (see alerts on the Now tab). Times are local to the station.</p>
+      <p className="hint">
+        ⚠️ ends a big swing (see alerts on the Now tab).
+        {flood && <> 🌊 forecast to reach flood level ({ft(flood.minor)}).</>} Times are local to the station.
+      </p>
     </section>
   )
 }

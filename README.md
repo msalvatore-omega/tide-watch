@@ -18,6 +18,12 @@ Three tabs:
 - **Conditions**: wind, water and air temperature, pressure trend (from the gauge,
   or the nearest one), sunrise/sunset, moon phase and spring/neap tides.
 - **Chart**: 9 hours back to 24 hours ahead; measured water over the forecast.
+- **Flood levels**: NOAA's minor/moderate/major flood heights drawn on the chart, a
+  warning when water is at flood level or a high tide in the next 24 hours is forecast
+  to reach it (including any surge the gauge is showing), and 🌊 marks in the Week table.
+- **History** (gauge stations): the last time the water was this high or low, the last
+  flood, and all-time records with dates — from NOAA's verified records back to 1902
+  for Baltimore, plus recent unverified readings. Cached on the device.
 - **Alerts**: big swings (top 10% for the station, or a size you choose) and surge
   warnings (gauge off the forecast by a set amount), with "Add to calendar".
 
@@ -88,6 +94,7 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/live.js` | Live gauge + weather hooks (6-minute refresh) |
 | `src/surge.js` | Measured-vs-forecast logic (shared with the server) |
 | `src/astro.js` | Sunrise/sunset and moon phase |
+| `src/history.js` | Flood levels, "last time this high/low", records |
 | `src/favorites.js` | Favorite stations |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
 | `src/components/` | Beach scene, chart, conditions, week table, planner, station picker, alerts |
