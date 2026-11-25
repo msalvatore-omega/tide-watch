@@ -511,3 +511,25 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 .chart .dot-low { fill: var(--low); }
 .chart .dot-now-forecast { stroke: var(--brand); fill: var(--panel); }
 @media (prefers-color-scheme: dark) { .flood-line { stroke: #ff8a50; } .chart .flood-label { fill: #ff8a50; } }
+
+/* --- Currents tab --- */
+.tabs { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 420px) { .tabs button { font-size: 0.82rem; padding: 0 2px; } }
+.cur-pick { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); margin: 4px 0 8px; }
+.cur-pick select { min-height: 44px; font-size: 16px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); max-width: 100%; }
+.cur-now { padding: 10px 12px; border-radius: 12px; background: var(--bg); border-left: 4px solid var(--brand); margin: 8px 0; }
+.cur-now.ebb { border-left-color: var(--low); }
+.cur-now.slack { border-left-color: var(--muted); }
+.cur-state { font-weight: 700; font-size: 1.05rem; }
+.cur-speed { color: var(--muted); margin-top: 2px; }
+.cur-speed strong { color: var(--ink); }
+.cur-cards { margin: 8px 0; }
+.cur-cards .card { box-shadow: none; background: var(--bg); }
+.cur-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.cur-table td { padding: 3px 4px; }
+.cur-table td.num { text-align: right; }
+.cur-table td.dir { width: 3.5em; color: var(--muted); }
+.cur-table tr.slack td { color: var(--muted); }
+.cur-table tr.flood .kind-cell { color: var(--high); font-weight: 600; }
+.cur-table tr.ebb .kind-cell { color: var(--low-text); font-weight: 600; }
+@media (max-width: 560px) { .cur-cards { grid-template-columns: 1fr 1fr 1fr; } .cur-cards .card .big { font-size: 0.95rem; } .cur-cards .card { padding: 8px; } }

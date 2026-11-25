@@ -12,6 +12,7 @@ import StationPicker from './components/StationPicker.jsx'
 import Conditions from './components/Conditions.jsx'
 import WeekTable from './components/WeekTable.jsx'
 import Planner from './components/Planner.jsx'
+import Currents from './components/Currents.jsx'
 import AlertsPanel, { AlertBanner, SurgeBanner, useSwingAlerts } from './components/AlertsPanel.jsx'
 
 const DEFAULT_STATION = '8574680' // Baltimore (Fort McHenry), MD
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'now', label: '🌊 Now' },
   { id: 'week', label: '📅 Week' },
   { id: 'plan', label: '🧭 Plan' },
+  { id: 'currents', label: '🌀 Currents' },
 ]
 
 const read = (key) => { try { return localStorage.getItem(key) } catch { return null } }
@@ -353,6 +355,7 @@ function Tidely() {
 
       {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} flood={flood} />}
       {tide && tab === 'plan' && <Planner events={events} now={now} station={station} live={live} />}
+      {tide && tab === 'currents' && <Currents key={stationId} events={events} now={now} station={station} />}
       </div>
 
       {tide && (

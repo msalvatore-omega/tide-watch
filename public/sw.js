@@ -92,6 +92,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
   const url = new URL(request.url)
+  // The big station lists (up to 3 MB) are kept, trimmed, in the app's own storage instead.
+  if (DATA_HOSTS.includes(url.hostname) && url.pathname.endsWith('/stations.json')) return
   if (DATA_HOSTS.includes(url.hostname)) event.respondWith(dataRequest(request))
   else if (url.origin === self.location.origin && url.href.startsWith(self.registration.scope)) event.respondWith(shellRequest(request, event))
 })
