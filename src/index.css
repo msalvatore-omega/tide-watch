@@ -104,7 +104,7 @@ button {
   border: 0;
   border-radius: 10px;
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
   font-weight: 600;
 }
 .secondary:disabled { opacity: 0.6; }
@@ -287,7 +287,7 @@ footer a { color: var(--brand); }
   font-weight: 600;
   color: var(--muted);
 }
-.mode-switch button.on { background: var(--brand); color: #fff; }
+.mode-switch button.on { background: var(--brand); color: var(--on-brand); }
 .live-dot {
   width: 10px;
   height: 10px;
@@ -380,13 +380,13 @@ footer { margin-top: 12px; font-size: 0.75rem; }
   flex: none; min-height: 32px; padding: 0 12px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--panel); font-size: 0.85rem; white-space: nowrap;
 }
-.chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+.chip.on { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
 .tabs {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin-bottom: 10px;
   border-radius: 999px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow);
 }
 .tabs button { min-height: 38px; border: 0; border-radius: 999px; background: transparent; font-weight: 600; color: var(--muted); }
-.tabs button.on { background: var(--brand); color: #fff; }
+.tabs button.on { background: var(--brand); color: var(--on-brand); }
 
 /* --- Scene badge, notes --- */
 .scene-badge {
@@ -422,15 +422,15 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 .week td.flag { width: 1.5em; text-align: center; }
 .week td.hl { width: 5.5em; font-weight: 600; font-size: 0.88rem; }
 .week td.high { color: var(--high); }
-.week td.low { color: var(--low); }
-.week tr.past { opacity: 0.45; }
+.week td.low { color: var(--low-text); }
+.week tr.past td, .week tr.past td.hl { color: var(--muted); font-weight: 400; }
 .print-only { display: none; }
 
 /* --- Planner --- */
 .plan-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 8px 0; }
 .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); }
 .seg button { min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; font-weight: 600; color: var(--muted); }
-.seg button.on { background: var(--brand); color: #fff; }
+.seg button.on { background: var(--brand); color: var(--on-brand); }
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
 .stepper button { width: 36px; min-height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-size: 1.1rem; }
 .stepper input {
@@ -451,7 +451,7 @@ footer { margin-top: 12px; font-size: 0.75rem; }
   .no-print, .tabs, .star, .station .change, footer { display: none !important; }
   .print-only { display: block; }
   body, .panel { background: #fff !important; box-shadow: none !important; color: #000; }
-  .week tr.past { opacity: 1; }
+  .week tr.past td { color: inherit; }
   .day { break-inside: avoid; }
 }
 .cond-value { white-space: nowrap; }
@@ -493,3 +493,21 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 .small-print { font-size: 0.75rem; margin-top: 6px; }
 .notice.offline { display: block; background: #fff4d6; color: #6b4a00; border-color: #f2d27a; font-size: 0.9rem; }
 @media (prefers-color-scheme: dark) { .notice.offline { background: #3a2f12; color: #ffe4a1; border-color: #6b5520; } }
+
+/* --- Accessibility: contrast-safe colours, visible keyboard focus --- */
+:root { --on-brand: #fff; --low-text: #8f5400; --live: #c62f35; }
+@media (prefers-color-scheme: dark) {
+  :root { --on-brand: #06141f; --low-text: #f0b04a; --live: #ff8f93; }
+}
+.badge { background: #c62f35; }
+.kind.live { color: var(--live); }
+.scene-badge.live { color: #c62f35; }
+.secondary.on { color: #fff; background: #1f7a45; }
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+.tabs button:focus-visible, .chip:focus-visible, .station:focus-visible { border-radius: 999px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.chart .line-forecast { stroke: var(--brand); }
+.chart .dot-high { fill: var(--high); }
+.chart .dot-low { fill: var(--low); }
+.chart .dot-now-forecast { stroke: var(--brand); fill: var(--panel); }
+@media (prefers-color-scheme: dark) { .flood-line { stroke: #ff8a50; } .chart .flood-label { fill: #ff8a50; } }

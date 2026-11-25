@@ -78,13 +78,13 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
           </g>
         ))}
         <path d={toArea(samples, line)} fill="url(#chartFill)" />
-        <path d={line} fill="none" stroke="#1d6fb3" strokeWidth="2" strokeDasharray={measured.length ? '5 4' : undefined} />
+        <path d={line} fill="none" className="line-forecast" strokeWidth="2" strokeDasharray={measured.length ? '5 4' : undefined} />
         {measured.length > 1 && <path d={toPath(measured)} fill="none" stroke="#e5484d" strokeWidth="2.5" />}
         {measured.length > 0 && (
           <g className="legend" transform={`translate(${width - 160} 0)`}>
             <line x1="0" x2="18" y1="10" y2="10" stroke="#e5484d" strokeWidth="2.5" />
             <text x="22" y="14">Measured</text>
-            <line x1="88" x2="106" y1="10" y2="10" stroke="#1d6fb3" strokeWidth="2" strokeDasharray="5 4" />
+            <line x1="88" x2="106" y1="10" y2="10" className="line-forecast" strokeWidth="2" strokeDasharray="5 4" />
             <text x="110" y="14">Forecast</text>
           </g>
         )}
@@ -95,7 +95,7 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
           const above = e.type === 'H'
           return (
             <g key={e.time.getTime()}>
-              <circle cx={ex} cy={ey} r="4.5" fill={above ? '#1d6fb3' : '#e2a23b'} stroke="#fff" strokeWidth="1.5" />
+              <circle cx={ex} cy={ey} r="4.5" className={above ? 'dot-high' : 'dot-low'} stroke="#fff" strokeWidth="1.5" />
               <text x={ex} y={above ? ey - 18 : ey + 18} textAnchor={anchor} className="evt">
                 {formatStationTime(e.local, { withDay: false })}
               </text>
@@ -106,7 +106,7 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
           )
         })}
         <line x1={nowX} x2={nowX} y1={22} y2={HEIGHT - PAD.bottom} stroke="#ff4d4d" strokeWidth="2" strokeDasharray="4 3" />
-        {forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="4" fill="#fff" stroke="#1d6fb3" strokeWidth="2" />}
+        {forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="4" className="dot-now-forecast" strokeWidth="2" />}
         {latest && <circle cx={x(latest[0])} cy={y(latest[1])} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
         {!latest && forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
         <text x={Math.max(nowX - 4, 4)} y={14} textAnchor="end" className="evt now">Now</text>

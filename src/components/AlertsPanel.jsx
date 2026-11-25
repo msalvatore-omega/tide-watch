@@ -20,12 +20,30 @@ function notify(title, body, tag) {
   return navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body, tag, icon: './icon-192.png' }))
 }
 
-/** Hook: current alert list + the user's alert settings (swing and surge). */
-export function useSwingAlerts(events, now) {
-  const [settings, setSettingsState] = useState(() => ({ ...DEFAULTS, ...load(SETTINGS_KEY, {}) }))
-  const setSettings = (s) => { setSettingsState(s); store(SETTINGS_KEY, s) }
+const LEVEL_KEYS = ['mode', 'feet', 'surgeFeet']
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]))
+
+/**
+ * Hook: current alert list + the user's alert settings.
+ * Alert levels (swing size, surge level) are saved per station, because a "big" swing
+ * differs from place to place. A station you haven't set up starts with the levels you
+ * chose most recently. Notification on/off applies to the whole device.
+ */
+export function useSwingAlerts(events, now, stationId) {
+  const [saved, setSaved] = useState(() => {
+    const raw = load(SETTINGS_KEY, {})
+    // Older versions stored one flat set of levels: keep them as the starting point.
+    return { notify: false, push: false, byStation: {}, ...raw, latest: { ...pick(DEFAULTS, LEVEL_KEYS), ...pick(raw, LEVEL_KEYS), ...raw.latest } }
+  })
+  const settings = { ...DEFAULTS, ...saved.latest, ...saved.byStation[stationId], notify: saved.notify, push: saved.push }
+  const setSettings = (s) => {
+    const levels = pick(s, LEVEL_KEYS)
+    const next = { notify: s.notify, push: s.push, latest: levels, byStation: { ...saved.byStation, [stationId]: levels } }
+    setSaved(next)
+    store(SETTINGS_KEY, next)
+  }
   const result = events ? findAlerts(events, now, settings) : null
-  return { settings, setSettings, ...result }
+  return { settings, setSettings, perStation: Boolean(saved.byStation[stationId]), ...result }
 }
 
 /** Banner for the top of the page when a big swing is under way or within 24 hours. */
@@ -56,7 +74,7 @@ export function SurgeBanner({ reading, surgeFeet, onShowLive }) {
   )
 }
 
-export default function AlertsPanel({ station, now, alerts, stats, threshold, settings, setSettings, reading, liveStatus }) {
+export default function AlertsPanel({ station, now, alerts, stats, threshold, settings, setSettings, perStation, reading, liveStatus }) {
   const [notifyMsg, setNotifyMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -251,6 +269,11 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
             </select>
           </label>
           <p className="hint surge-status">{surgeStatus}</p>
+          <p className="hint">
+            {perStation
+              ? `These levels are saved for ${station.name}; other stations keep their own.`
+              : `Using your most recent levels. Change them here to save a set just for ${station.name}.`}
+          </p>
 
           {NOTIFICATIONS_ENABLED && (
             <>

@@ -122,7 +122,7 @@ function Tidely() {
     setReloadKey((k) => k + 1)
   }, [now, events, online])
 
-  const swing = useSwingAlerts(events, now)
+  const swing = useSwingAlerts(events, now, stationId)
   const { surgeFeet } = swing.settings
 
   // Live gauge + exact 6-minute forecast, refreshed every 6 minutes. Used whenever available.
@@ -232,7 +232,7 @@ function Tidely() {
 
       <div className="tabs no-print" role="tablist">
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+          <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={tab === t.id} aria-controls="tab-panel" className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}
@@ -259,6 +259,7 @@ function Tidely() {
       )}
       {!error && !events && <div className="skeleton" aria-busy="true">Checking the tides…</div>}
 
+      <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
       {tide && view && tab === 'now' && (
         <>
           {floodWarning && (
@@ -285,6 +286,10 @@ function Tidely() {
             />
             <span className={live ? 'scene-badge live' : 'scene-badge'}>{live ? '● LIVE' : 'Forecast'}</span>
             <p className="mood">{view.mood}</p>
+            <p className="sr-only">
+              {live ? 'Measured' : 'Forecast'} water level {ft(view.height)}, {view.rising ? 'rising' : 'falling'}. Next high tide{' '}
+              {formatStationTime(tide.nextHigh.local)} at {ft(tide.nextHigh.height)}. Next low tide {formatStationTime(tide.nextLow.local)} at {ft(tide.nextLow.height)}.
+            </p>
           </section>
 
           <section className="cards">
@@ -348,6 +353,7 @@ function Tidely() {
 
       {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} flood={flood} />}
       {tide && tab === 'plan' && <Planner events={events} now={now} station={station} live={live} />}
+      </div>
 
       {tide && (
         <footer>
