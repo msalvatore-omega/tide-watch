@@ -159,6 +159,8 @@ export default function App() {
       {picking && (
         <StationPicker
           favorites={favs.favorites}
+          isFavorite={favs.isFavorite}
+          onToggleFavorite={favs.toggle}
           onPick={(id) => { setStationId(id); setPicking(false) }}
           onCancel={() => setPicking(false)}
         />

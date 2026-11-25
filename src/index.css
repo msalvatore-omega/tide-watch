@@ -87,7 +87,7 @@ button {
   box-shadow: var(--shadow);
 }
 .picker-row { display: flex; gap: 8px; }
-.picker input {
+.picker input[type="search"] {
   flex: 1;
   min-width: 0;
   min-height: 44px;
@@ -109,19 +109,6 @@ button {
 }
 .secondary:disabled { opacity: 0.6; }
 .results { list-style: none; margin: 8px 0 0; padding: 0; max-height: 50vh; overflow-y: auto; }
-.results button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 8px;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-}
-.results button:active, .results button:hover { background: var(--bg); }
 .results small { color: var(--muted); flex: none; }
 .hint { color: var(--muted); margin: 8px 4px 0; font-size: 0.9rem; }
 .link { background: none; border: 0; color: var(--brand); padding: 0 8px; text-decoration: underline; }
@@ -469,3 +456,21 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 }
 .cond-value { white-space: nowrap; }
 .cond-sub { text-transform: none; }
+
+/* --- Station picker results: live/forecast badge + favorite star --- */
+.results li { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+.results li .result-main {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 8px; border: 0; background: none; text-align: left;
+}
+.results li .result-main:hover, .results li .result-main:active { background: var(--bg); }
+.result-name { font-weight: 500; }
+.result-meta { display: flex; gap: 8px; align-items: center; }
+.kind { font-size: 0.72rem; font-weight: 700; color: var(--muted); padding: 1px 6px; border-radius: 6px; background: var(--bg); }
+.kind.live { color: #e5484d; background: color-mix(in srgb, #e5484d 10%, transparent); }
+.result-star { flex: none; width: 44px; border: 0; background: none; font-size: 1.3rem; color: var(--muted); }
+.result-star.on { color: #e2a23b; }
+.live-filter { margin: 8px 2px 0; font-size: 0.88rem; }
+.hint-inline { color: var(--muted); font-size: 0.8rem; }
+.live-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.live-filter input { width: 20px; height: 20px; margin: 0; }
