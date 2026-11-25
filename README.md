@@ -8,26 +8,30 @@ Data comes from NOAA's free [CO-OPS Tides & Currents API](https://api.tidesandcu
 
 ## Features
 
-- **Live beach scene**: the water sits where the tide is now, rising or falling.
-- **Predicted / Live switch**: predicted tides (astronomical forecast, ~3,500
-  stations) or the live gauge reading (measured every 6 minutes at ~300 stations),
-  with how far the water is above or below the forecast. Stations without a gauge
-  offer the nearest one.
-- **Surge warnings**: a banner and notification when the live gauge is off the
-  forecast by your chosen amount (0.5–3 ft, default 1 ft, or off) — wind or storm
-  surge. Notifies once per surge; checked every 6 minutes in the background while
-  notifications are on, even in the Predicted view.
-- **Next high / low tide** with countdowns, in the station's local time.
-- **24-hour tide chart** with a "Now" marker.
-- **Find a station** by zip code, town or beach name, or "📍 Near me".
-- **Big-swing alerts**: flags swings in the top 10% for that station this month
-  (or above a size you choose), with a banner, browser notifications while the
-  app is open, and an "Add to calendar" file for reminders when it's closed.
-- **Phone notifications (on hold)**: in-app and background push notifications are
-  built but switched off. Set `NOTIFICATIONS_ENABLED = true` in `src/config.js` to
-  bring them back; background alerts also need the alerts server (below) deployed.
-- Installable to a phone's home screen; dark mode; shareable links
-  (`?station=8574680&mode=live`).
+Three tabs:
+
+**🌊 Now**
+- **Live beach scene**: the water sits where the tide is right now: the live gauge
+  reading when the station has one (about 300 do), otherwise NOAA's forecast.
+- **Right now / next high / next low**: measured height, trend and how far it is
+  above or below the forecast; countdowns to the next high and low.
+- **Conditions**: wind, water and air temperature, pressure trend (from the gauge,
+  or the nearest one), sunrise/sunset, moon phase and spring/neap tides.
+- **Chart**: 9 hours back to 24 hours ahead; measured water over the forecast.
+- **Alerts**: big swings (top 10% for the station, or a size you choose) and surge
+  warnings (gauge off the forecast by a set amount), with "Add to calendar".
+
+**📅 Week**: every high and low for 7 days with sunrise/sunset and moon; printable.
+
+**🧭 Plan**: when is the water above/below a height you choose over the next 7 days
+(e.g. to launch a boat or walk the flats), optionally daylight only.
+
+Also: search by zip code, name or "📍 Near me"; ★ favorite stations; installable to a
+phone's home screen; dark mode; shareable links (`?station=8574680&tab=week`).
+
+**Phone notifications (on hold)**: in-app and background push notifications are built
+but switched off. Set `NOTIFICATIONS_ENABLED = true` in `src/config.js` to bring them
+back; background alerts also need the alerts server (below) deployed.
 
 ## Run locally
 
@@ -81,9 +85,12 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 |---|---|
 | `src/noaa.js` | NOAA API client, station list, zip lookup |
 | `src/tides.js` | Tide math (interpolation) and formatting |
-| `src/live.js` | Live gauge readings: 6-minute refresh, measured vs predicted |
+| `src/live.js` | Live gauge + weather hooks (6-minute refresh) |
+| `src/surge.js` | Measured-vs-forecast logic (shared with the server) |
+| `src/astro.js` | Sunrise/sunset and moon phase |
+| `src/favorites.js` | Favorite stations |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
-| `src/components/` | Beach scene, chart, station picker, alerts panel |
+| `src/components/` | Beach scene, chart, conditions, week table, planner, station picker, alerts |
 | `src/push.js` | Registers the device with the alerts server |
 | `public/sw.js` | Service worker: shows notifications, including background pushes |
 | `server/` | Alerts server (Cloudflare Worker) |

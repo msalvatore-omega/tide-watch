@@ -4,6 +4,12 @@ const DATA_API = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter'
 const META_API = 'https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi'
 const APP_NAME = 'tidely' // NOAA asks clients to identify themselves
 
+// NOAA lists some stations in ALL CAPS; show those in title case.
+const title = (n) =>
+  n && n === n.toUpperCase()
+    ? n.toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/ (Of|The|And|At|On|In)\b/g, (w) => w.toLowerCase())
+    : n
+
 const pad = (n) => String(n).padStart(2, '0')
 const ymdUTC = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`
 
@@ -63,7 +69,7 @@ export async function fetchStationInfo(stationId) {
   const json = await getJson(`${META_API}/stations/${encodeURIComponent(stationId)}.json`)
   const s = json.stations?.[0]
   if (!s) throw new Error(`Station ${stationId} not found.`)
-  return { id: s.id, name: s.name, state: s.state, lat: s.lat, lng: s.lng }
+  return { id: s.id, name: title(s.name), state: s.state, lat: s.lat, lng: s.lng }
 }
 
 const stationLists = {}
@@ -71,7 +77,7 @@ const stationLists = {}
 // Station lists change rarely: cache in memory and localStorage for a week.
 function fetchStationList(type) {
   if (stationLists[type]) return stationLists[type]
-  const cacheKey = `tidewatch.stations.${type}.v1`
+  const cacheKey = `tidewatch.stations.${type}.v2`
   stationLists[type] = (async () => {
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey))
@@ -79,7 +85,7 @@ function fetchStationList(type) {
     } catch { /* storage unavailable — just fetch */ }
 
     const json = await getJson(`${META_API}/stations.json?type=${type}`)
-    const stations = json.stations.map((s) => ({ id: s.id, name: s.name, state: s.state, lat: s.lat, lng: s.lng }))
+    const stations = json.stations.map((s) => ({ id: s.id, name: title(s.name), state: s.state, lat: s.lat, lng: s.lng }))
     try {
       localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), stations }))
     } catch { /* quota/private mode — fine */ }
@@ -135,4 +141,59 @@ export async function lookupZip(zip) {
   if (!res.ok) throw new Error(`Zip lookup failed (HTTP ${res.status}).`)
   const p = (await res.json()).places[0]
   return { lat: Number(p.latitude), lng: Number(p.longitude), place: `${p['place name']}, ${p['state abbreviation']}` }
+}
+
+const sixMinBegin = (hoursAgo) => {
+  const d = new Date(Date.now() - hoursAgo * 3600e3)
+  return encodeURIComponent(`${ymdUTC(d)} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`)
+}
+
+/**
+ * For the "Now" view: NOAA's exact 6-minute predictions from 26 hours ago to 26 hours
+ * ahead, plus measured gauge readings for the last 26 hours. Either is [] when the
+ * station doesn't publish it (no gauge, or a highs/lows-only station).
+ */
+export async function fetchSixMinute(stationId) {
+  const common =
+    `${DATA_API}?datum=MLLW&units=english&time_zone=gmt&format=json` +
+    `&station=${encodeURIComponent(stationId)}&begin_date=${sixMinBegin(26)}&application=${APP_NAME}`
+  const [pred, obs] = await Promise.allSettled([
+    getJson(`${common}&product=predictions&range=52`),
+    getJson(`${common}&product=water_level&range=27`),
+  ])
+  // Smaller ("subordinate") stations publish only highs/lows, not 6-minute values,
+  // and most have no gauge: treat "no data" as empty rather than an error.
+  for (const r of [pred, obs]) if (r.status === 'rejected' && !r.reason.noData) throw r.reason
+  const toPoints = (rows) =>
+    (rows ?? [])
+      .filter((r) => r.v !== '' && r.v != null)
+      .map((r) => ({ time: new Date(r.t.replace(' ', 'T') + ':00Z'), height: Number(r.v) }))
+  return {
+    predicted: pred.status === 'fulfilled' ? toPoints(pred.value.predictions) : [],
+    observed: obs.status === 'fulfilled' ? toPoints(obs.value.data) : [],
+  }
+}
+
+/**
+ * Latest weather at a gauge: wind (knots), water and air temperature (°F) and air
+ * pressure (mb, with the change over ~3 hours). Each is null if the gauge lacks it.
+ */
+export async function fetchConditions(stationId) {
+  const base = `${DATA_API}?units=english&time_zone=gmt&format=json&station=${encodeURIComponent(stationId)}&application=${APP_NAME}`
+  const latest = (product) => getJson(`${base}&product=${product}&date=latest`).then((j) => j.data?.at(-1) ?? null, () => null)
+  const [wind, water, air, pressure] = await Promise.all([
+    latest('wind'),
+    latest('water_temperature'),
+    latest('air_temperature'),
+    getJson(`${base}&product=air_pressure&begin_date=${sixMinBegin(3)}&range=4`).then((j) => j.data ?? [], () => []),
+  ])
+  const num = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v))
+  const time = (r) => (r ? new Date(r.t.replace(' ', 'T') + ':00Z') : null)
+  const p = pressure.filter((r) => num(r.v) != null)
+  return {
+    wind: wind && num(wind.s) != null ? { knots: num(wind.s), gust: num(wind.g), dir: wind.dr, deg: num(wind.d), time: time(wind) } : null,
+    waterTemp: water && num(water.v) != null ? { f: num(water.v), time: time(water) } : null,
+    airTemp: air && num(air.v) != null ? { f: num(air.v), time: time(air) } : null,
+    pressure: p.length ? { mb: num(p.at(-1).v), change3h: p.length > 1 ? num(p.at(-1).v) - num(p[0].v) : null, time: time(p.at(-1)) } : null,
+  }
 }

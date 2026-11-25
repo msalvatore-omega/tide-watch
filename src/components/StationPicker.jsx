@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { fetchAllStations, distanceMiles, lookupZip } from '../noaa.js'
 
 /** Search ~3,500 NOAA tide stations by name, state, ID or zip code, or find the nearest one. */
-export default function StationPicker({ onPick, onCancel }) {
+export default function StationPicker({ onPick, onCancel, favorites = [] }) {
   const [stations, setStations] = useState(null)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
@@ -19,11 +19,12 @@ export default function StationPicker({ onPick, onCancel }) {
   const results = useMemo(() => {
     if (nearby) return nearby
     const q = query.trim().toLowerCase()
-    if (!stations || q.length < 2) return []
+    if (q.length < 2) return favorites.map((f) => ({ ...f, favorite: true }))
+    if (!stations) return []
     return stations
       .filter((s) => s.id.includes(q) || `${s.name} ${s.state}`.toLowerCase().includes(q))
       .slice(0, 12)
-  }, [stations, query, nearby])
+  }, [stations, query, nearby, favorites])
 
   const showNearest = (all, lat, lng) =>
     setNearby(
@@ -89,6 +90,7 @@ export default function StationPicker({ onPick, onCancel }) {
         <button type="button" className="secondary" onClick={findNearMe} disabled={busy}>📍 Near me</button>
       </div>
       {message && <p className="hint">{message}</p>}
+      {!message && query.trim().length < 2 && favorites.length > 0 && <p className="hint">★ Your favorites</p>}
       {!stations && query.length >= 2 && !message && <p className="hint">Loading stations…</p>}
       {stations && query.trim().length >= 2 && results.length === 0 && !nearby && !message && <p className="hint">No stations match “{query}”.</p>}
       <ul className="results">
@@ -96,7 +98,7 @@ export default function StationPicker({ onPick, onCancel }) {
           <li key={s.id}>
             <button type="button" onClick={() => onPick(s.id)}>
               <span>{s.name}{s.state ? `, ${s.state}` : ''}</span>
-              <small>{s.miles != null ? `${s.miles.toFixed(1)} mi` : `#${s.id}`}</small>
+              <small>{s.miles != null ? `${s.miles.toFixed(1)} mi` : s.favorite ? '★' : `#${s.id}`}</small>
             </button>
           </li>
         ))}

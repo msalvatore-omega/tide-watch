@@ -85,3 +85,27 @@ export function tideMood({ fraction, rising }) {
   if (fraction > 0.85) return 'High tide: the beach is at its smallest. 🏄'
   return rising ? 'Water is rising. Move your towel! 🏖️' : 'Water is falling. More beach is on the way. 🦀'
 }
+
+/** Linear interpolation in a sorted { time, height } series (e.g. 6-minute data); null outside it. */
+export function seriesAt(series, t) {
+  const ms = t instanceof Date ? t.getTime() : t
+  if (!series?.length || ms < series[0].time.getTime() || ms > series.at(-1).time.getTime()) return null
+  const i = series.findIndex((p) => p.time.getTime() >= ms)
+  const b = series[i]
+  if (b.time.getTime() === ms) return b.height
+  const a = series[i - 1]
+  return a.height + ((b.height - a.height) * (ms - a.time)) / (b.time - a.time)
+}
+
+/** Station-local calendar date ("YYYY-MM-DD") for an absolute time. */
+export const stationDate = (date, offsetMs) => new Date(date.getTime() + offsetMs).toISOString().slice(0, 10)
+
+/** "Wed, Nov 25" for a station-local "YYYY-MM-DD". */
+export const formatDay = (ymd) =>
+  new Date(`${ymd}T12:00:00Z`).toLocaleDateString([], { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
+
+export function formatDuration(ms) {
+  const mins = Math.round(ms / 60000)
+  const h = Math.floor(mins / 60)
+  return h ? `${h}h ${String(mins % 60).padStart(2, '0')}m` : `${mins}m`
+}

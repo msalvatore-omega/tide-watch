@@ -181,12 +181,11 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
   const surgeStatus =
     settings.surgeFeet == null ? 'Surge warnings are off.'
     : liveStatus === 'ok' && reading ? `Live gauge right now: ${diffText(reading.diff)} (${ft(reading.height)} measured).`
-    : liveStatus === 'unavailable' ? 'This spot has no live gauge, so surge warnings can’t run here. The Live gauge tab offers the nearest one.'
+    : liveStatus === 'unavailable' ? 'This spot has no live gauge, so surge warnings can’t run here.'
     : liveStatus === 'loading' ? 'Checking the live gauge…'
     : liveStatus === 'error' ? 'Couldn’t reach the live gauge; retrying every 6 minutes.'
     : pushOn ? 'Checked every 5 minutes by the Tidely alerts server.'
-    : NOTIFICATIONS_ENABLED ? 'Checked while the Live gauge view is open, or in the background when notifications are on.'
-    : 'Checked while the Live gauge view is open.'
+    : 'Checked every 6 minutes while Tidely is open.'
 
   const shown = showAll ? alerts : alerts.slice(0, 3)
 

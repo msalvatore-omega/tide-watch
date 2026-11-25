@@ -18,9 +18,8 @@ const SAND_CRITTERS = [
   { x: 470, emoji: '🪸', size: 26 },
 ]
 
-export default function TideScene({ fraction, rising, stationHour, highLabel, lowLabel }) {
+export default function TideScene({ fraction, rising, night, highLabel, lowLabel }) {
   const waterY = LOW_Y - fraction * (LOW_Y - HIGH_Y)
-  const night = stationHour < 6.5 || stationHour >= 18.5
   const pole = 600
 
   return (

@@ -1,16 +1,25 @@
 import { useEffect, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
-import { tideNow, tideMood, formatStationTime, formatAtStation, formatCountdown, ft } from './tides.js'
-import { useLiveWater, useNearestLiveGauge, liveNow, liveMood, diffText } from './live.js'
+import { tideNow, tideMood, seriesAt, formatStationTime, formatAtStation, formatCountdown, ft } from './tides.js'
+import { useSixMinute, useConditions, useNearestLiveGauge, liveNow, liveMood, diffText } from './live.js'
+import { isNight, sunTimes, moonPhase } from './astro.js'
+import { useFavorites } from './favorites.js'
 import TideScene from './components/TideScene.jsx'
 import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
+import Conditions from './components/Conditions.jsx'
+import WeekTable from './components/WeekTable.jsx'
+import Planner from './components/Planner.jsx'
 import AlertsPanel, { AlertBanner, SurgeBanner, useSwingAlerts } from './components/AlertsPanel.jsx'
-import { NOTIFICATIONS_ENABLED } from './config.js'
 
 const DEFAULT_STATION = '9414290' // San Francisco, CA
 const STORAGE_KEY = 'tidewatch.station'
-const MODE_KEY = 'tidewatch.mode'
+const MAX_READING_AGE_MS = 60 * 60e3 // older gauge readings aren't shown as "now"
+const TABS = [
+  { id: 'now', label: '🌊 Now' },
+  { id: 'week', label: '📅 Week' },
+  { id: 'plan', label: '🧭 Plan' },
+]
 
 const read = (key) => { try { return localStorage.getItem(key) } catch { return null } }
 const write = (key, v) => { try { localStorage.setItem(key, v) } catch { /* ignore */ } }
@@ -18,15 +27,14 @@ const write = (key, v) => { try { localStorage.setItem(key, v) } catch { /* igno
 export default function App() {
   const params = new URLSearchParams(location.search)
   const [stationId, setStationId] = useState(() => params.get('station') || read(STORAGE_KEY) || DEFAULT_STATION)
-  const [mode, setModeState] = useState(() => (params.get('mode') || read(MODE_KEY)) === 'live' ? 'live' : 'predicted')
+  const [tab, setTab] = useState(() => (TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') : 'now'))
   const [station, setStation] = useState(null)
   const [events, setEvents] = useState(null)
   const [error, setError] = useState('')
   const [picking, setPicking] = useState(false)
   const [now, setNow] = useState(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
-
-  const setMode = (m) => { setModeState(m); write(MODE_KEY, m) }
+  const favs = useFavorites()
 
   // Tick the clock every 30s so the picture and countdowns stay live.
   useEffect(() => {
@@ -36,7 +44,7 @@ export default function App() {
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
-  // Load predictions whenever the station changes (or we've run past the data we have).
+  // High/low predictions (31 days) and station details.
   useEffect(() => {
     let cancelled = false
     setError('')
@@ -52,14 +60,15 @@ export default function App() {
     return () => { cancelled = true }
   }, [stationId, reloadKey])
 
-  // Keep the URL shareable: ?station=…&mode=live
+  // Shareable URL: ?station=…&tab=…
   useEffect(() => {
     const url = new URL(location.href)
     url.searchParams.set('station', stationId)
-    if (mode === 'live') url.searchParams.set('mode', 'live')
-    else url.searchParams.delete('mode')
+    url.searchParams.delete('mode') // old Predicted/Live links
+    if (tab === 'now') url.searchParams.delete('tab')
+    else url.searchParams.set('tab', tab)
     history.replaceState(null, '', url)
-  }, [stationId, mode])
+  }, [stationId, tab])
 
   // Refetch once we're within a day of the end of the loaded predictions.
   useEffect(() => {
@@ -69,19 +78,24 @@ export default function App() {
   const swing = useSwingAlerts(events, now)
   const { surgeFeet } = swing.settings
 
-  // Live gauge data: needed for the Live view, and in the background for surge notifications.
-  const liveWanted = mode === 'live' || (NOTIFICATIONS_ENABLED && swing.settings.notify && surgeFeet != null)
-  const liveState = useLiveWater(stationId, liveWanted)
-  const liveStatus = !liveWanted ? 'idle' : liveState.stationId === stationId ? liveState.status : 'loading'
-  const reading = liveStatus === 'ok' ? liveNow(liveState.data, now) : null
-  const liveOk = mode === 'live' && reading != null
-  const live = liveOk ? reading : null // what the Live view displays
-  const noGauge = mode === 'live' && liveStatus === 'unavailable'
+  // Live gauge + exact 6-minute forecast, refreshed every 6 minutes. Used whenever available.
+  const six = useSixMinute(stationId)
+  const sixData = six.status === 'ok' ? six.data : null
+  const hasGauge = sixData?.observed.length > 0
+  const noGauge = sixData != null && !hasGauge
+  const reading = hasGauge ? liveNow(sixData, now) : null
+  const live = reading && reading.ageMs < MAX_READING_AGE_MS ? reading : null
   const nearestGauge = useNearestLiveGauge(station, noGauge)
+  const weatherGauge = hasGauge
+    ? { id: stationId, name: null }
+    : nearestGauge ? { id: nearestGauge.id, name: `${nearestGauge.name} (${nearestGauge.miles.toFixed(1)} mi)` } : null
+  const weather = useConditions(weatherGauge?.id ?? null)
 
   const tide = events ? tideNow(events, now) : null
+  const forecastNow = tide ? seriesAt(sixData?.predicted, now) ?? tide.height : null
+  const hasCoords = station?.lat != null && tide
 
-  // What the picture and "now" card show: the gauge reading in live mode, else the prediction.
+  // What the picture and "Right now" show: the gauge when it's live, else the forecast.
   let view = null
   if (tide) {
     if (live) {
@@ -91,37 +105,72 @@ export default function App() {
       const fraction = max === min ? 0.5 : (live.height - min) / (max - min)
       view = { height: live.height, rising, fraction, min, max, mood: liveMood(live, tideMood({ fraction, rising }), surgeFeet) }
     } else {
-      view = { ...tide, mood: tideMood(tide) }
+      const fraction = tide.max === tide.min ? 0.5 : Math.min(1, Math.max(0, (forecastNow - tide.min) / (tide.max - tide.min)))
+      view = { ...tide, height: forecastNow, fraction, mood: tideMood({ ...tide, fraction }) }
     }
   }
+
+  const gaugeNote = live ? null
+    : noGauge ? (nearestGauge
+      ? <>No live gauge here · <button type="button" className="link inline" onClick={() => setStationId(nearestGauge.id)}>{nearestGauge.name} has one ({nearestGauge.miles.toFixed(1)} mi)</button></>
+      : 'No live gauge here')
+    : reading ? `Gauge offline (last reading ${Math.round(reading.ageMs / 3600e3)} h ago)`
+    : six.status === 'error' ? "Couldn't reach the live gauge"
+    : six.status === 'loading' ? 'Checking the live gauge…'
+    : null
+
+  const stationLabel = station ? `${station.name}${station.state ? `, ${station.state}` : ''}` : 'Loading…'
 
   return (
     <main>
       <header>
         <h1>🌊 Tidely</h1>
         {!picking && (
-          <button className="station" onClick={() => setPicking(true)} aria-label="Change station">
-            <span className="station-name">{station ? `${station.name}${station.state ? `, ${station.state}` : ''}` : 'Loading…'}</span>
-            <span className="change">Change ▾</span>
-          </button>
+          <div className="station-row">
+            <button className="station" onClick={() => setPicking(true)} aria-label="Change station">
+              <span className="station-name">{stationLabel}</span>
+              <span className="change">▾</span>
+            </button>
+            {station && (
+              <button
+                type="button"
+                className={favs.isFavorite(station.id) ? 'star on' : 'star'}
+                onClick={() => favs.toggle(station)}
+                aria-pressed={favs.isFavorite(station.id)}
+                aria-label={favs.isFavorite(station.id) ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                {favs.isFavorite(station.id) ? '★' : '☆'}
+              </button>
+            )}
+          </div>
         )}
       </header>
 
-      <div className="mode-switch" role="radiogroup" aria-label="Tide data">
-        <button role="radio" aria-checked={mode === 'predicted'} className={mode === 'predicted' ? 'on' : ''} onClick={() => setMode('predicted')}>
-          🔮 Predicted
-        </button>
-        <button role="radio" aria-checked={mode === 'live'} className={mode === 'live' ? 'on' : ''} onClick={() => setMode('live')}>
-          <span className={liveOk ? 'live-dot on' : 'live-dot'} /> Live gauge
-        </button>
-      </div>
+      {!picking && favs.favorites.length > 0 && (
+        <nav className="fav-row no-print" aria-label="Favorite stations">
+          {favs.favorites.map((f) => (
+            <button key={f.id} type="button" className={f.id === stationId ? 'chip on' : 'chip'} onClick={() => setStationId(f.id)}>
+              {f.name.split(',')[0]}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {picking && (
         <StationPicker
+          favorites={favs.favorites}
           onPick={(id) => { setStationId(id); setPicking(false) }}
           onCancel={() => setPicking(false)}
         />
       )}
+
+      <div className="tabs no-print" role="tablist">
+        {TABS.map((t) => (
+          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       {error && (
         <div className="error" role="alert">
@@ -130,86 +179,89 @@ export default function App() {
         </div>
       )}
 
-      {mode === 'live' && noGauge && (
-        <div className="notice">
-          <strong>📡 No live gauge at this spot.</strong> NOAA measures the water at about 300 stations; the rest have
-          predictions only, so predicted tides are shown below.
-          {nearestGauge && (
-            <button className="secondary" onClick={() => setStationId(nearestGauge.id)}>
-              Switch to {nearestGauge.name}{nearestGauge.state ? `, ${nearestGauge.state}` : ''} ({nearestGauge.miles.toFixed(1)} mi)
-            </button>
-          )}
-        </div>
-      )}
-      {mode === 'live' && liveStatus === 'error' && (
-        <div className="notice">📡 Couldn't reach the live gauge ({liveState.message}). Showing predicted tides; retrying every 6 minutes.</div>
-      )}
-      {mode === 'live' && liveStatus === 'loading' && tide && <div className="notice subtle">📡 Reading the live gauge…</div>}
-
       {!error && !tide && <div className="skeleton" aria-busy="true">Checking the tides…</div>}
 
-      {tide && view && (
+      {tide && view && tab === 'now' && (
         <>
-          <SurgeBanner reading={reading} surgeFeet={surgeFeet} onShowLive={mode === 'live' ? null : () => setMode('live')} />
+          <SurgeBanner reading={live} surgeFeet={surgeFeet} />
           <AlertBanner alerts={swing.alerts} now={now} />
           <section className="scene-wrap">
             <TideScene
               fraction={view.fraction}
               rising={view.rising}
-              stationHour={tide.stationHour}
+              night={hasCoords ? isNight(now, station.lat, station.lng, tide.offsetMs) : tide.stationHour < 6.5 || tide.stationHour >= 18.5}
               highLabel={`High ${ft(view.max)}`}
               lowLabel={`Low ${ft(view.min)}`}
             />
+            <span className={live ? 'scene-badge live' : 'scene-badge'}>{live ? '● LIVE' : 'Forecast'}</span>
             <p className="mood">{view.mood}</p>
           </section>
 
           <section className="cards">
-            {live ? (
-              <Card
-                label={<>Measured now <span className="badge">LIVE</span></>}
-                big={ft(live.height)}
-                sub={
-                  <>
-                    {live.trend === 'rising' ? '⬆️ Rising' : live.trend === 'falling' ? '⬇️ Falling' : live.trend === 'steady' ? '➡️ Steady' : ''}
-                    {live.diff != null && <> · {diffText(live.diff)}</>}
-                    <br />
-                    <span className={live.ageMs > 30 * 60e3 ? 'stale' : ''}>
-                      Reading at {formatAtStation(live.time, tide.offsetMs)} ({Math.round(live.ageMs / 60000)} min ago)
-                    </span>
-                  </>
-                }
-                accent="now"
-              />
-            ) : (
-              <Card label="Predicted now" big={ft(tide.height)} sub={tide.rising ? '⬆️ Coming in' : '⬇️ Going out'} accent="now" />
-            )}
             <Card
-              label={live ? 'Forecast high' : 'Next high tide'}
+              label={live ? <>Right now <span className="badge">LIVE</span></> : 'Right now · forecast'}
+              big={ft(view.height)}
+              sub={
+                <>
+                  {live
+                    ? <>{live.trend === 'rising' ? '⬆️ Rising' : live.trend === 'falling' ? '⬇️ Falling' : live.trend === 'steady' ? '➡️ Steady' : ''}{live.diff != null && <> · {diffText(live.diff)}</>}</>
+                    : view.rising ? '⬆️ Coming in' : '⬇️ Going out'}
+                  {(live || gaugeNote) && <br />}
+                  <span className="note">
+                    {live ? `Gauge reading at ${formatAtStation(live.time, tide.offsetMs)} (${Math.round(live.ageMs / 60000)} min ago)` : gaugeNote}
+                  </span>
+                </>
+              }
+              accent="now"
+            />
+            <Card
+              label="Next high"
               big={formatStationTime(tide.nextHigh.local)}
               sub={`${ft(tide.nextHigh.height)} · ${formatCountdown(tide.nextHigh.time - now)}`}
               accent="high"
             />
             <Card
-              label={live ? 'Forecast low' : 'Next low tide'}
+              label="Next low"
               big={formatStationTime(tide.nextLow.local)}
               sub={`${ft(tide.nextLow.height)} · ${formatCountdown(tide.nextLow.time - now)}`}
               accent="low"
             />
           </section>
 
+          <Conditions
+            weather={weather.status === 'ok' ? weather.data : null}
+            source={weatherGauge?.name}
+            sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
+            moon={moonPhase(now)}
+            offsetMs={tide.offsetMs}
+          />
+
           <section className="panel">
-            <h2>{live ? 'Last 18 hours: measured vs predicted' : 'Next 24 hours'}</h2>
-            <TideChart events={events} now={now} offsetMs={tide.offsetMs} live={liveOk ? liveState.data : null} />
+            <h2>{hasGauge ? 'Measured vs forecast' : 'Tide forecast'}</h2>
+            <TideChart events={events} now={now} offsetMs={tide.offsetMs} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} />
           </section>
 
-          {station && <AlertsPanel station={station} now={now} {...swing} reading={reading} liveStatus={liveStatus} />}
-
-          <footer>
-            Times local to the station (now {formatAtStation(now, tide.offsetMs)}) · feet above MLLW ·{' '}
-            <a href={`https://tidesandcurrents.noaa.gov/stationhome.html?id=${stationId}`} target="_blank" rel="noreferrer">NOAA data</a>
-            {live ? ' (live readings preliminary, refreshed every 6 min)' : ''} · not for navigation
-          </footer>
+          {station && (
+            <AlertsPanel
+              station={station}
+              now={now}
+              {...swing}
+              reading={live}
+              liveStatus={live ? 'ok' : noGauge ? 'unavailable' : reading ? 'error' : six.status}
+            />
+          )}
         </>
+      )}
+
+      {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} />}
+      {tide && tab === 'plan' && <Planner events={events} now={now} offsetMs={tide.offsetMs} station={station} live={live} />}
+
+      {tide && (
+        <footer>
+          Times local to the station (now {formatAtStation(now, tide.offsetMs)}) · feet above MLLW ·{' '}
+          <a href={`https://tidesandcurrents.noaa.gov/stationhome.html?id=${stationId}`} target="_blank" rel="noreferrer">NOAA data</a>
+          {hasGauge ? ' (gauge readings preliminary, refreshed every 6 min)' : ''} · not for navigation
+        </footer>
       )}
     </main>
   )

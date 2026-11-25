@@ -1,65 +1,55 @@
 import { useEffect, useRef, useState } from 'react'
-import { heightAt, formatStationTime, formatAtStation, ft } from '../tides.js'
+import { heightAt, seriesAt, formatStationTime, formatAtStation, ft } from '../tides.js'
 
-const HEIGHT = 184
+const HEIGHT = 190
 const PAD = { top: 44, bottom: 50, left: 12, right: 12 }
+const PAST_H = 9
+const FUTURE_H = 24
 
 /**
- * Tide curve with highs, lows and "now".
- * Predicted mode: 6 hours ago → 24 hours ahead.
- * Live mode (live = { observed, predicted }): 18 hours ago → 6 hours ahead, the
- * measured line drawn over NOAA's dashed 6-minute prediction.
+ * Tide from 9 hours ago to 24 hours ahead: the forecast (NOAA's exact 6-minute
+ * predictions where loaded, else interpolated from highs/lows), with the gauge's
+ * measured water drawn over it when the station has a gauge.
  */
-export default function TideChart({ events, now, offsetMs, live }) {
+export default function TideChart({ events, now, offsetMs, predicted, observed }) {
   const [ref, width] = useWidth()
 
-  const start = new Date(now.getTime() - (live ? 18 : 6) * 3600e3)
-  const end = new Date(now.getTime() + (live ? 6 : 24) * 3600e3)
-  const inWindow = (p) => p.time >= start && p.time <= end
-  let samples = []
-  if (live) {
-    samples = live.predicted.filter(inWindow).map((p) => [p.time.getTime(), p.height])
-  } else {
-    for (let t = start.getTime(); t <= end.getTime(); t += 10 * 60e3) {
-      const h = heightAt(events, new Date(t))
-      if (h != null) samples.push([t, h])
-    }
+  const start = now.getTime() - PAST_H * 3600e3
+  const end = now.getTime() + FUTURE_H * 3600e3
+  const samples = []
+  for (let t = start; t <= end; t += 10 * 60e3) {
+    const h = seriesAt(predicted, t) ?? heightAt(events, new Date(t))
+    if (h != null) samples.push([t, h])
   }
-  const observed = live ? live.observed.filter(inWindow).map((p) => [p.time.getTime(), p.height]) : []
-  const shown = events.filter(inWindow)
+  const measured = (observed ?? []).filter((p) => p.time >= start).map((p) => [p.time.getTime(), p.height])
+  const shown = events.filter((e) => e.time >= start && e.time <= end)
   if (!width || samples.length < 2) return <div ref={ref} className="chart" style={{ height: HEIGHT }} />
 
-  const hs = [...samples, ...observed].map((s) => s[1])
+  const hs = [...samples, ...measured].map((s) => s[1])
   const lo = Math.min(...hs)
   const hi = Math.max(...hs)
   const x = (t) => PAD.left + ((t - start) / (end - start)) * (width - PAD.left - PAD.right)
   const y = (h) => PAD.top + (1 - (h - lo) / (hi - lo || 1)) * (HEIGHT - PAD.top - PAD.bottom)
-
   const toPath = (pts) => pts.map(([t, h], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)} ${y(h).toFixed(1)}`).join(' ')
   const toArea = (pts, path) => `${path} L${x(pts.at(-1)[0])} ${HEIGHT - PAD.bottom} L${x(pts[0][0])} ${HEIGHT - PAD.bottom} Z`
+
   const line = toPath(samples)
-  const obsLine = observed.length ? toPath(observed) : null
-  // "Now" dot: the latest reading in live mode, the predicted curve otherwise.
-  const latest = observed.at(-1)
-  const nowX = latest ? x(latest[0]) : x(now.getTime())
-  const nowH = latest ? latest[1] : heightAt(events, now)
+  const nowX = x(now.getTime())
+  const latest = measured.at(-1)
+  const forecastNow = seriesAt(predicted, now.getTime()) ?? heightAt(events, now)
 
   // Hour ticks every 6 hours, on the station's clock.
   const ticks = []
-  const firstTick = Math.ceil((start.getTime() + offsetMs) / (6 * 3600e3)) * 6 * 3600e3 - offsetMs
-  for (let t = firstTick; t <= end.getTime(); t += 6 * 3600e3) ticks.push(new Date(t))
+  const firstTick = Math.ceil((start + offsetMs) / (6 * 3600e3)) * 6 * 3600e3 - offsetMs
+  for (let t = firstTick; t <= end; t += 6 * 3600e3) ticks.push(new Date(t))
 
   return (
     <div ref={ref} className="chart">
-      <svg width={width} height={HEIGHT} role="img" aria-label={live ? 'Measured and predicted tide height, last 18 hours' : 'Tide height over the next 24 hours'}>
+      <svg width={width} height={HEIGHT} role="img" aria-label="Tide height: measured and forecast, 9 hours ago to 24 hours ahead">
         <defs>
           <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#3aa0e6" stopOpacity="0.45" />
-            <stop offset="1" stopColor="#3aa0e6" stopOpacity="0.05" />
-          </linearGradient>
-          <linearGradient id="chartFillLive" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#e5484d" stopOpacity="0.25" />
-            <stop offset="1" stopColor="#e5484d" stopOpacity="0.02" />
+            <stop offset="0" stopColor="#3aa0e6" stopOpacity="0.4" />
+            <stop offset="1" stopColor="#3aa0e6" stopOpacity="0.04" />
           </linearGradient>
         </defs>
         {ticks.map((t) => (
@@ -70,23 +60,16 @@ export default function TideChart({ events, now, offsetMs, live }) {
             </text>
           </g>
         ))}
-        {obsLine ? (
-          <>
-            <path d={line} fill="none" stroke="#1d6fb3" strokeWidth="2" strokeDasharray="5 4" opacity="0.8" />
-            {observed.length > 1 && <path d={toArea(observed, obsLine)} fill="url(#chartFillLive)" />}
-            <path d={obsLine} fill="none" stroke="#e5484d" strokeWidth="2.5" />
-            <g className="legend">
-              <line x1="4" x2="22" y1="10" y2="10" stroke="#e5484d" strokeWidth="2.5" />
-              <text x="26" y="14">Measured</text>
-              <line x1="96" x2="114" y1="10" y2="10" stroke="#1d6fb3" strokeWidth="2" strokeDasharray="5 4" />
-              <text x="118" y="14">Predicted</text>
-            </g>
-          </>
-        ) : (
-          <>
-            <path d={toArea(samples, line)} fill="url(#chartFill)" />
-            <path d={line} fill="none" stroke="#1d6fb3" strokeWidth="2.5" />
-          </>
+        <path d={toArea(samples, line)} fill="url(#chartFill)" />
+        <path d={line} fill="none" stroke="#1d6fb3" strokeWidth="2" strokeDasharray={measured.length ? '5 4' : undefined} />
+        {measured.length > 1 && <path d={toPath(measured)} fill="none" stroke="#e5484d" strokeWidth="2.5" />}
+        {measured.length > 0 && (
+          <g className="legend" transform={`translate(${width - 160} 0)`}>
+            <line x1="0" x2="18" y1="10" y2="10" stroke="#e5484d" strokeWidth="2.5" />
+            <text x="22" y="14">Measured</text>
+            <line x1="88" x2="106" y1="10" y2="10" stroke="#1d6fb3" strokeWidth="2" strokeDasharray="5 4" />
+            <text x="110" y="14">Forecast</text>
+          </g>
         )}
         {shown.map((e) => {
           const ex = x(e.time)
@@ -106,8 +89,10 @@ export default function TideChart({ events, now, offsetMs, live }) {
           )
         })}
         <line x1={nowX} x2={nowX} y1={22} y2={HEIGHT - PAD.bottom} stroke="#ff4d4d" strokeWidth="2" strokeDasharray="4 3" />
-        <circle cx={nowX} cy={y(nowH)} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />
-        <text x={nowX} y={14} textAnchor="middle" className="evt now">{live ? 'Latest' : 'Now'}</text>
+        {forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="4" fill="#fff" stroke="#1d6fb3" strokeWidth="2" />}
+        {latest && <circle cx={x(latest[0])} cy={y(latest[1])} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
+        {!latest && forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
+        <text x={Math.max(nowX - 4, 4)} y={14} textAnchor="end" className="evt now">Now</text>
       </svg>
     </div>
   )
