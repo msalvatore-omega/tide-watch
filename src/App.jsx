@@ -6,6 +6,7 @@ import TideScene from './components/TideScene.jsx'
 import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
 import AlertsPanel, { AlertBanner, SurgeBanner, useSwingAlerts } from './components/AlertsPanel.jsx'
+import { NOTIFICATIONS_ENABLED } from './config.js'
 
 const DEFAULT_STATION = '9414290' // San Francisco, CA
 const STORAGE_KEY = 'tidewatch.station'
@@ -69,7 +70,7 @@ export default function App() {
   const { surgeFeet } = swing.settings
 
   // Live gauge data: needed for the Live view, and in the background for surge notifications.
-  const liveWanted = mode === 'live' || (swing.settings.notify && surgeFeet != null)
+  const liveWanted = mode === 'live' || (NOTIFICATIONS_ENABLED && swing.settings.notify && surgeFeet != null)
   const liveState = useLiveWater(stationId, liveWanted)
   const liveStatus = !liveWanted ? 'idle' : liveState.stationId === stationId ? liveState.status : 'loading'
   const reading = liveStatus === 'ok' ? liveNow(liveState.data, now) : null
@@ -183,13 +184,13 @@ export default function App() {
               <Card label="Predicted now" big={ft(tide.height)} sub={tide.rising ? '⬆️ Coming in' : '⬇️ Going out'} accent="now" />
             )}
             <Card
-              label={live ? 'Next high (predicted)' : 'Next high tide'}
+              label={live ? 'Forecast high' : 'Next high tide'}
               big={formatStationTime(tide.nextHigh.local)}
               sub={`${ft(tide.nextHigh.height)} · ${formatCountdown(tide.nextHigh.time - now)}`}
               accent="high"
             />
             <Card
-              label={live ? 'Next low (predicted)' : 'Next low tide'}
+              label={live ? 'Forecast low' : 'Next low tide'}
               big={formatStationTime(tide.nextLow.local)}
               sub={`${ft(tide.nextLow.height)} · ${formatCountdown(tide.nextLow.time - now)}`}
               accent="low"
@@ -204,12 +205,9 @@ export default function App() {
           {station && <AlertsPanel station={station} now={now} {...swing} reading={reading} liveStatus={liveStatus} />}
 
           <footer>
-            Times are local to the station (now {formatAtStation(now, tide.offsetMs)} there). Heights in feet above
-            mean lower low water (MLLW). Data: <a href={`https://tidesandcurrents.noaa.gov/stationhome.html?id=${stationId}`} target="_blank" rel="noreferrer">NOAA Tides &amp; Currents</a>.
-            {live
-              ? ' Live readings are NOAA preliminary data (not yet quality-checked), refreshed every 6 minutes.'
-              : ' Predictions only.'}{' '}
-            Not for navigation.
+            Times local to the station (now {formatAtStation(now, tide.offsetMs)}) · feet above MLLW ·{' '}
+            <a href={`https://tidesandcurrents.noaa.gov/stationhome.html?id=${stationId}`} target="_blank" rel="noreferrer">NOAA data</a>
+            {live ? ' (live readings preliminary, refreshed every 6 min)' : ''} · not for navigation
           </footer>
         </>
       )}

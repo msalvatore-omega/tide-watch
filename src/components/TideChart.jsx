@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { heightAt, formatStationTime, formatAtStation, ft } from '../tides.js'
 
-const HEIGHT = 220
-const PAD = { top: 52, bottom: 56, left: 12, right: 12 }
+const HEIGHT = 184
+const PAD = { top: 44, bottom: 50, left: 12, right: 12 }
 
 /**
  * Tide curve with highs, lows and "now".

@@ -23,8 +23,9 @@ Data comes from NOAA's free [CO-OPS Tides & Currents API](https://api.tidesandcu
 - **Big-swing alerts**: flags swings in the top 10% for that station this month
   (or above a size you choose), with a banner, browser notifications while the
   app is open, and an "Add to calendar" file for reminders when it's closed.
-- **Alerts when the app is closed**: the alerts server (below) checks NOAA every
-  5 minutes and sends Web Push notifications to subscribed phones.
+- **Phone notifications (on hold)**: in-app and background push notifications are
+  built but switched off. Set `NOTIFICATIONS_ENABLED = true` in `src/config.js` to
+  bring them back; background alerts also need the alerts server (below) deployed.
 - Installable to a phone's home screen; dark mode; shareable links
   (`?station=8574680&mode=live`).
 

@@ -6,6 +6,9 @@ const H = 480
 const HIGH_Y = 250 // water surface at the day's highest tide
 const LOW_Y = 410 // water surface at the day's lowest tide
 const beachY = (x) => 480 - 0.42 * x // sloped shoreline
+// Visible window: trims empty sky and deep water so the picture is shorter (2:1).
+const VIEW_TOP = 60
+const VIEW_H = 400
 
 // Things that live on the sand: the water covers them as the tide comes in.
 const SAND_CRITTERS = [
@@ -23,7 +26,7 @@ export default function TideScene({ fraction, rising, stationHour, highLabel, lo
   return (
     <svg
       className="scene"
-      viewBox={`0 0 ${W} ${H}`}
+      viewBox={`0 ${VIEW_TOP} ${W} ${VIEW_H}`}
       role="img"
       aria-label={`Illustration: the tide is ${Math.round(fraction * 100)}% of the way from low to high and ${rising ? 'rising' : 'falling'}.`}
     >
@@ -46,20 +49,20 @@ export default function TideScene({ fraction, rising, stationHour, highLabel, lo
       <rect width={W} height={H} fill="url(#sky)" />
       {night ? (
         <g>
-          {[[80, 60], [190, 110], [300, 40], [420, 90], [520, 50], [720, 130], [250, 160], [640, 30]].map(([x, y], i) => (
+          {[[80, 90], [190, 120], [300, 78], [420, 110], [520, 84], [720, 140], [250, 165], [640, 72]].map(([x, y], i) => (
             <circle key={i} cx={x} cy={y} r={i % 3 ? 1.6 : 2.4} fill="#fff" className="twinkle" style={{ animationDelay: `${i * 0.4}s` }} />
           ))}
-          <circle cx="690" cy="80" r="34" fill="#f4f1de" />
-          <circle cx="705" cy="70" r="30" fill="#0b1d3a" opacity="0.9" />
+          <circle cx="690" cy="108" r="32" fill="#f4f1de" />
+          <circle cx="704" cy="99" r="28" fill="#0b1d3a" opacity="0.9" />
         </g>
       ) : (
         <g>
-          <circle cx="690" cy="80" r="40" fill="#ffd84d" />
+          <circle cx="690" cy="110" r="36" fill="#ffd84d" />
           <g className="drift">
-            <Cloud x={120} y={70} />
-            <Cloud x={420} y={45} scale={0.7} />
+            <Cloud x={120} y={105} />
+            <Cloud x={420} y={88} scale={0.7} />
           </g>
-          <text x="300" y="140" fontSize="26" className="glide">🕊️</text>
+          <text x="300" y="152" fontSize="26" className="glide">🕊️</text>
         </g>
       )}
 

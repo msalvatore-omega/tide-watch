@@ -3,6 +3,7 @@ import { findAlerts, alertsToICS } from '../alerts.js'
 import { formatStationTime, formatCountdown, ft } from '../tides.js'
 import { diffText, isSurge, SURGE_CHOICES, DEFAULT_SURGE_FT } from '../live.js'
 import { pushSupported, needsHomeScreen, enablePush, syncPush, disablePush, sendTestPush } from '../push.js'
+import { NOTIFICATIONS_ENABLED } from '../config.js'
 
 const SETTINGS_KEY = 'tidewatch.alerts.v1'
 const NOTIFIED_KEY = 'tidewatch.notified.v1'
@@ -33,10 +34,9 @@ export function AlertBanner({ alerts, now }) {
   if (!soon) return null
   return (
     <div className="alert-banner" role="status">
-      <strong>⚠️ Big tide swing {soon.inProgress ? 'happening now' : formatCountdown(soon.from.time - now)}</strong>
+      <strong>⚠️ Big swing {soon.inProgress ? 'now' : formatCountdown(soon.from.time - now)}</strong>
       <span>
-        Water {soon.rising ? 'rises' : 'drops'} {ft(soon.size)} by {formatStationTime(soon.to.local)}
-        {' '}({soon.ratio.toFixed(1)}× a typical swing here)
+        {soon.rising ? 'Rises' : 'Drops'} {ft(soon.size)} by {formatStationTime(soon.to.local)} · {soon.ratio.toFixed(1)}× typical
       </span>
     </div>
   )
@@ -49,9 +49,9 @@ export function SurgeBanner({ reading, surgeFeet, onShowLive }) {
     <div className="alert-banner surge" role="status">
       <strong>🌬️ Water is {diffText(reading.diff)}</strong>
       <span>
-        The gauge reads {ft(reading.height)} where the forecast expected {ft(reading.predicted)}. Wind or a storm is moving the water.
+        Gauge {ft(reading.height)} vs forecast {ft(reading.predicted)}: wind or storm.
+        {onShowLive && <> <button type="button" className="link inline" onClick={onShowLive}>See live →</button></>}
       </span>
-      {onShowLive && <button type="button" className="link" onClick={onShowLive}>See the live gauge →</button>}
     </div>
   )
 }
@@ -59,21 +59,25 @@ export function SurgeBanner({ reading, surgeFeet, onShowLive }) {
 export default function AlertsPanel({ station, now, alerts, stats, threshold, settings, setSettings, reading, liveStatus }) {
   const [notifyMsg, setNotifyMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const supportsNotify = typeof Notification !== 'undefined' && 'serviceWorker' in navigator
+  // Notifications are on hold unless switched on in config.js.
+  const notifyOn = NOTIFICATIONS_ENABLED && settings.notify
+  const pushOn = notifyOn && settings.push
   // With background push on, the alerts server sends everything; the in-app checks below stand down.
-  const inApp = settings.notify && !settings.push
+  const inApp = notifyOn && !settings.push
 
   // Keep the alerts server watching the station and settings shown here.
   const { mode, feet, surgeFeet } = settings
   useEffect(() => {
-    if (!settings.notify || !settings.push) return
+    if (!pushOn) return
     const t = setTimeout(() => {
       syncPush(station, { mode, feet, surgeFeet })
         .catch(() => enablePush(station, { mode, feet, surgeFeet })) // subscription expired: renew it
         .catch((e) => setNotifyMsg(`Couldn't update background alerts: ${e.message}`))
     }, 800)
     return () => clearTimeout(t)
-  }, [station, mode, feet, surgeFeet, settings.notify, settings.push])
+  }, [station, mode, feet, surgeFeet, pushOn])
 
   // Big swings: notify shortly before each one.
   useEffect(() => {
@@ -180,22 +184,26 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
     : liveStatus === 'unavailable' ? 'This spot has no live gauge, so surge warnings can’t run here. The Live gauge tab offers the nearest one.'
     : liveStatus === 'loading' ? 'Checking the live gauge…'
     : liveStatus === 'error' ? 'Couldn’t reach the live gauge; retrying every 6 minutes.'
-    : settings.notify && settings.push ? 'Checked every 5 minutes by the Tidely alerts server.'
-    : 'Checked while the Live gauge view is open, or in the background when notifications are on.'
+    : pushOn ? 'Checked every 5 minutes by the Tidely alerts server.'
+    : NOTIFICATIONS_ENABLED ? 'Checked while the Live gauge view is open, or in the background when notifications are on.'
+    : 'Checked while the Live gauge view is open.'
+
+  const shown = showAll ? alerts : alerts.slice(0, 3)
 
   return (
     <section className="panel alerts">
-      <h2>Big swing alerts · next 7 days</h2>
-      <p className="hint">
-        A typical swing here is {ft(stats.typical)}. Alerting on swings of {ft(threshold)} or more
-        {settings.mode === 'auto' ? ' (the biggest 10% this month)' : ''}.
-      </p>
+      <div className="panel-head">
+        <h2>Big swings · next 7 days</h2>
+        {alerts.length > 0 && (
+          <button type="button" className="link small" onClick={downloadCalendar}>📅 Add to calendar</button>
+        )}
+      </div>
 
       {alerts.length === 0 ? (
         <p className="calm">😌 No big swings in the next week.</p>
       ) : (
         <ul className="alert-list">
-          {alerts.map((a) => (
+          {shown.map((a) => (
             <li key={a.from.time.toISOString()} className={a.inProgress ? 'live' : ''}>
               <div className="swing">
                 <span className="size">{a.rising ? '⬆️' : '⬇️'} {ft(a.size)}</span>
@@ -209,56 +217,69 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
           ))}
         </ul>
       )}
+      {alerts.length > 3 && (
+        <button type="button" className="link small" onClick={() => setShowAll(!showAll)}>
+          {showAll ? 'Show fewer' : `Show all ${alerts.length}`}
+        </button>
+      )}
 
-      <div className="alert-controls">
-        <label>
-          Big swing alerts
-          <select
-            value={settings.mode === 'auto' ? 'auto' : String(settings.feet)}
-            onChange={(e) => setSettings(e.target.value === 'auto' ? { ...settings, mode: 'auto' } : { ...settings, mode: 'custom', feet: Number(e.target.value) })}
-          >
-            <option value="auto">Unusually big swings for this spot</option>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((f) => <option key={f} value={f}>Swings of {f} ft or more</option>)}
-          </select>
-        </label>
+      <details className="alert-settings">
+        <summary>⚙️ Alert settings</summary>
+        <div className="alert-controls">
+          <p className="hint">
+            A typical swing here is {ft(stats.typical)}. Flagging swings of {ft(threshold)} or more
+            {settings.mode === 'auto' ? ' (the biggest 10% this month)' : ''}.
+          </p>
+          <label>
+            Big swing alerts
+            <select
+              value={settings.mode === 'auto' ? 'auto' : String(settings.feet)}
+              onChange={(e) => setSettings(e.target.value === 'auto' ? { ...settings, mode: 'auto' } : { ...settings, mode: 'custom', feet: Number(e.target.value) })}
+            >
+              <option value="auto">Unusually big swings for this spot</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((f) => <option key={f} value={f}>Swings of {f} ft or more</option>)}
+            </select>
+          </label>
 
-        <label>
-          Surge warning (live gauge vs forecast)
-          <select
-            value={settings.surgeFeet == null ? 'off' : String(settings.surgeFeet)}
-            onChange={(e) => setSettings({ ...settings, surgeFeet: e.target.value === 'off' ? null : Number(e.target.value) })}
-          >
-            {SURGE_CHOICES.map((f) => <option key={f} value={f}>{f} ft or more off the forecast</option>)}
-            <option value="off">Off</option>
-          </select>
-        </label>
-        <p className="hint surge-status">{surgeStatus}</p>
+          <label>
+            Surge warning (live gauge vs forecast)
+            <select
+              value={settings.surgeFeet == null ? 'off' : String(settings.surgeFeet)}
+              onChange={(e) => setSettings({ ...settings, surgeFeet: e.target.value === 'off' ? null : Number(e.target.value) })}
+            >
+              {SURGE_CHOICES.map((f) => <option key={f} value={f}>{f} ft or more off the forecast</option>)}
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <p className="hint surge-status">{surgeStatus}</p>
 
-        <div className="alert-buttons">
-          <button type="button" className={settings.notify ? 'secondary on' : 'secondary'} onClick={toggleNotify} aria-pressed={settings.notify} disabled={busy}>
-            {busy ? 'Turning on…' : settings.notify ? '🔔 Notifications on' : '🔕 Notify me'}
-          </button>
-          <button type="button" className="secondary ghost" onClick={downloadCalendar} disabled={!alerts.length}>📅 Add to calendar</button>
+          {NOTIFICATIONS_ENABLED && (
+            <>
+              <div className="alert-buttons">
+                <button type="button" className={notifyOn ? 'secondary on' : 'secondary'} onClick={toggleNotify} aria-pressed={notifyOn} disabled={busy}>
+                  {busy ? 'Turning on…' : notifyOn ? '🔔 Notifications on' : '🔕 Notify me'}
+                </button>
+              </div>
+              {pushOn && <button type="button" className="link test-push" onClick={sendTest}>Send a test notification</button>}
+              {notifyMsg && <p className="hint">{notifyMsg}</p>}
+              {pushOn && (
+                <p className="hint">
+                  ✅ Alerts for {station.name} arrive even when Tidely is closed: about 3 hours before each big swing
+                  {settings.surgeFeet != null ? ', and when the live gauge passes your surge level' : ''}. Checked every 5 minutes.
+                  This device follows one station, the one you're viewing.
+                </p>
+              )}
+              {inApp && (
+                <p className="hint">
+                  While Tidely is open you'll be notified about 3 hours before each big swing
+                  {settings.surgeFeet != null ? ', and as soon as the live gauge passes your surge level (checked every 6 minutes)' : ''}.
+                  For swing reminders when it's closed, use Add to calendar.
+                </p>
+              )}
+            </>
+          )}
         </div>
-        {settings.notify && settings.push && (
-          <button type="button" className="link test-push" onClick={sendTest}>Send a test notification</button>
-        )}
-        {notifyMsg && <p className="hint">{notifyMsg}</p>}
-        {settings.notify && settings.push && (
-          <p className="hint">
-            ✅ Alerts for {station.name} arrive even when Tidely is closed: about 3 hours before each big swing
-            {settings.surgeFeet != null ? ', and when the live gauge passes your surge level' : ''}. Checked every 5 minutes.
-            This device follows one station, the one you're viewing.
-          </p>
-        )}
-        {settings.notify && !settings.push && (
-          <p className="hint">
-            While Tidely is open you'll be notified about 3 hours before each big swing
-            {settings.surgeFeet != null ? ', and as soon as the live gauge passes your surge level (checked every 6 minutes)' : ''}.
-            For swing reminders when it's closed, use Add to calendar.
-          </p>
-        )}
-      </div>
+      </details>
     </section>
   )
 }
