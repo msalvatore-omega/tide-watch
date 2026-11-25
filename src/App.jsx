@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
 import { tideNow, tideMood, formatStationTime, formatAtStation, formatCountdown, ft } from './tides.js'
-import { useLiveWater, useNearestLiveGauge, liveNow, liveMood, diffText, SURGE_ALERT_FT } from './live.js'
+import { useLiveWater, useNearestLiveGauge, liveNow, liveMood, diffText } from './live.js'
 import TideScene from './components/TideScene.jsx'
 import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
-import AlertsPanel, { AlertBanner, useSwingAlerts } from './components/AlertsPanel.jsx'
+import AlertsPanel, { AlertBanner, SurgeBanner, useSwingAlerts } from './components/AlertsPanel.jsx'
 
 const DEFAULT_STATION = '9414290' // San Francisco, CA
 const STORAGE_KEY = 'tidewatch.station'
@@ -65,14 +65,20 @@ export default function App() {
     if (events && now > events.at(-1).time - 24 * 3600e3) setReloadKey((k) => k + 1)
   }, [now, events])
 
-  const liveState = useLiveWater(stationId, mode === 'live')
-  const liveOk = mode === 'live' && liveState.status === 'ok' && liveState.stationId === stationId
-  const live = liveOk ? liveNow(liveState.data, now) : null
-  const noGauge = mode === 'live' && liveState.status === 'unavailable' && liveState.stationId === stationId
+  const swing = useSwingAlerts(events, now)
+  const { surgeFeet } = swing.settings
+
+  // Live gauge data: needed for the Live view, and in the background for surge notifications.
+  const liveWanted = mode === 'live' || (swing.settings.notify && surgeFeet != null)
+  const liveState = useLiveWater(stationId, liveWanted)
+  const liveStatus = !liveWanted ? 'idle' : liveState.stationId === stationId ? liveState.status : 'loading'
+  const reading = liveStatus === 'ok' ? liveNow(liveState.data, now) : null
+  const liveOk = mode === 'live' && reading != null
+  const live = liveOk ? reading : null // what the Live view displays
+  const noGauge = mode === 'live' && liveStatus === 'unavailable'
   const nearestGauge = useNearestLiveGauge(station, noGauge)
 
   const tide = events ? tideNow(events, now) : null
-  const swing = useSwingAlerts(events, now)
 
   // What the picture and "now" card show: the gauge reading in live mode, else the prediction.
   let view = null
@@ -82,7 +88,7 @@ export default function App() {
       const max = Math.max(tide.max, live.height)
       const rising = live.trend ? live.trend === 'rising' || (live.trend === 'steady' && tide.rising) : tide.rising
       const fraction = max === min ? 0.5 : (live.height - min) / (max - min)
-      view = { height: live.height, rising, fraction, min, max, mood: liveMood(live, tideMood({ fraction, rising })) }
+      view = { height: live.height, rising, fraction, min, max, mood: liveMood(live, tideMood({ fraction, rising }), surgeFeet) }
     } else {
       view = { ...tide, mood: tideMood(tide) }
     }
@@ -134,21 +140,16 @@ export default function App() {
           )}
         </div>
       )}
-      {mode === 'live' && liveState.status === 'error' && (
+      {mode === 'live' && liveStatus === 'error' && (
         <div className="notice">📡 Couldn't reach the live gauge ({liveState.message}). Showing predicted tides; retrying every 6 minutes.</div>
       )}
-      {mode === 'live' && liveState.status === 'loading' && tide && <div className="notice subtle">📡 Reading the live gauge…</div>}
+      {mode === 'live' && liveStatus === 'loading' && tide && <div className="notice subtle">📡 Reading the live gauge…</div>}
 
       {!error && !tide && <div className="skeleton" aria-busy="true">Checking the tides…</div>}
 
       {tide && view && (
         <>
-          {live && live.diff != null && Math.abs(live.diff) >= SURGE_ALERT_FT && (
-            <div className="alert-banner" role="status">
-              <strong>🌬️ Water is {diffText(live.diff)}</strong>
-              <span>The gauge reads {ft(live.height)} where the forecast expected {ft(live.predicted)}. Wind or a storm is moving the water.</span>
-            </div>
-          )}
+          <SurgeBanner reading={reading} surgeFeet={surgeFeet} onShowLive={mode === 'live' ? null : () => setMode('live')} />
           <AlertBanner alerts={swing.alerts} now={now} />
           <section className="scene-wrap">
             <TideScene
@@ -200,7 +201,7 @@ export default function App() {
             <TideChart events={events} now={now} offsetMs={tide.offsetMs} live={liveOk ? liveState.data : null} />
           </section>
 
-          {station && <AlertsPanel station={station} now={now} {...swing} />}
+          {station && <AlertsPanel station={station} now={now} {...swing} reading={reading} liveStatus={liveStatus} />}
 
           <footer>
             Times are local to the station (now {formatAtStation(now, tide.offsetMs)} there). Heights in feet above

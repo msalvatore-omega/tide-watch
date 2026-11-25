@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react'
 import { findAlerts, alertsToICS } from '../alerts.js'
 import { formatStationTime, formatCountdown, ft } from '../tides.js'
+import { diffText, isSurge, SURGE_CHOICES, DEFAULT_SURGE_FT } from '../live.js'
 
 const SETTINGS_KEY = 'tidewatch.alerts.v1'
 const NOTIFIED_KEY = 'tidewatch.notified.v1'
+const SURGE_STATE_KEY = 'tidewatch.surge.v1'
 const NOTIFY_LEAD_MS = 3 * 3600e3 // notify when a big swing starts within 3 hours
+const DEFAULTS = { mode: 'auto', feet: 6, notify: false, surgeFeet: DEFAULT_SURGE_FT }
 
 const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback } }
 const store = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* ignore */ } }
 
-/** Hook: current alert list + the user's alert settings. */
+const canNotify = () => typeof Notification !== 'undefined' && 'serviceWorker' in navigator && Notification.permission === 'granted'
+
+function notify(title, body, tag) {
+  return navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body, tag, icon: './icon-192.png' }))
+}
+
+/** Hook: current alert list + the user's alert settings (swing and surge). */
 export function useSwingAlerts(events, now) {
-  const [settings, setSettingsState] = useState(() => load(SETTINGS_KEY, { mode: 'auto', feet: 6, notify: false }))
+  const [settings, setSettingsState] = useState(() => ({ ...DEFAULTS, ...load(SETTINGS_KEY, {}) }))
   const setSettings = (s) => { setSettingsState(s); store(SETTINGS_KEY, s) }
   const result = events ? findAlerts(events, now, settings) : null
   return { settings, setSettings, ...result }
@@ -32,25 +41,36 @@ export function AlertBanner({ alerts, now }) {
   )
 }
 
-export default function AlertsPanel({ station, now, alerts, stats, threshold, settings, setSettings }) {
+/** Banner when the live gauge is off the forecast by the user's surge level. */
+export function SurgeBanner({ reading, surgeFeet, onShowLive }) {
+  if (!isSurge(reading, surgeFeet)) return null
+  return (
+    <div className="alert-banner surge" role="status">
+      <strong>🌬️ Water is {diffText(reading.diff)}</strong>
+      <span>
+        The gauge reads {ft(reading.height)} where the forecast expected {ft(reading.predicted)}. Wind or a storm is moving the water.
+      </span>
+      {onShowLive && <button type="button" className="link" onClick={onShowLive}>See the live gauge →</button>}
+    </div>
+  )
+}
+
+export default function AlertsPanel({ station, now, alerts, stats, threshold, settings, setSettings, reading, liveStatus }) {
   const [notifyMsg, setNotifyMsg] = useState('')
   const supportsNotify = typeof Notification !== 'undefined' && 'serviceWorker' in navigator
 
-  // While the app is open (or installed and running), notify shortly before each big swing.
+  // Big swings: notify shortly before each one.
   useEffect(() => {
-    if (!settings.notify || !supportsNotify || Notification.permission !== 'granted' || !alerts) return
+    if (!settings.notify || !canNotify() || !alerts) return
     const due = alerts.filter((a) => a.from.time - now < NOTIFY_LEAD_MS)
     for (const a of due) {
       const key = `${station.id}:${a.from.time.toISOString()}`
       if (load(NOTIFIED_KEY, {})[key]) continue
-      navigator.serviceWorker.ready
-        .then((reg) =>
-          reg.showNotification(`🌊 Big tide swing at ${station.name}`, {
-            body: `Water ${a.rising ? 'rises' : 'drops'} ${ft(a.size)} from ${formatStationTime(a.from.local, { withDay: false })} to ${formatStationTime(a.to.local, { withDay: false })}.`,
-            tag: key, // same tag = replaces rather than duplicates
-            icon: './icon-192.png',
-          }),
-        )
+      notify(
+        `🌊 Big tide swing at ${station.name}`,
+        `Water ${a.rising ? 'rises' : 'drops'} ${ft(a.size)} from ${formatStationTime(a.from.local, { withDay: false })} to ${formatStationTime(a.to.local, { withDay: false })}.`,
+        key, // same tag = replaces rather than duplicates
+      )
         .then(() => {
           // Record only after it was actually shown, so failures are retried next tick.
           const notified = load(NOTIFIED_KEY, {})
@@ -60,7 +80,39 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
         })
         .catch(() => {})
     }
-  }, [alerts, now, settings.notify, station, supportsNotify])
+  }, [alerts, now, settings.notify, station])
+
+  // Surge: notify once when the water crosses the level, then stay quiet until it
+  // eases back (below 75% of the level) or flips from above to below the forecast.
+  const readingTime = reading?.time?.getTime()
+  const readingDiff = reading?.diff
+  const readingAge = reading?.ageMs
+  useEffect(() => {
+    if (readingDiff == null || settings.surgeFeet == null) return
+    const episodes = load(SURGE_STATE_KEY, {})
+    const active = episodes[station.id]
+    const dir = readingDiff > 0 ? 'above' : 'below'
+    const over = Math.abs(readingDiff) >= settings.surgeFeet
+
+    if (active && (Math.abs(readingDiff) < settings.surgeFeet * 0.75 || active.dir !== dir)) {
+      delete episodes[station.id] // episode over; the next surge will notify again
+      store(SURGE_STATE_KEY, episodes)
+    }
+    const stillActive = load(SURGE_STATE_KEY, {})[station.id]
+    if (!over || stillActive || !settings.notify || !canNotify() || readingAge > 60 * 60e3) return
+
+    notify(
+      `🌬️ Water ${diffText(readingDiff)} at ${station.name}`,
+      `The live gauge reads ${Math.abs(readingDiff).toFixed(1)} ft ${dir} the tide forecast. Wind or a storm is moving the water.`,
+      `${station.id}:surge`,
+    )
+      .then(() => {
+        const latest = load(SURGE_STATE_KEY, {})
+        latest[station.id] = { dir, at: Date.now() }
+        store(SURGE_STATE_KEY, latest)
+      })
+      .catch(() => {})
+  }, [readingTime, readingDiff, readingAge, settings.surgeFeet, settings.notify, station])
 
   const toggleNotify = async () => {
     if (settings.notify) return setSettings({ ...settings, notify: false })
@@ -79,6 +131,14 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 1000)
   }
+
+  const surgeStatus =
+    settings.surgeFeet == null ? 'Surge warnings are off.'
+    : liveStatus === 'ok' && reading ? `Live gauge right now: ${diffText(reading.diff)} (${ft(reading.height)} measured).`
+    : liveStatus === 'unavailable' ? 'This spot has no live gauge, so surge warnings can’t run here. The Live gauge tab offers the nearest one.'
+    : liveStatus === 'loading' ? 'Checking the live gauge…'
+    : liveStatus === 'error' ? 'Couldn’t reach the live gauge; retrying every 6 minutes.'
+    : 'Checked while the Live gauge view is open, or in the background when notifications are on.'
 
   return (
     <section className="panel alerts">
@@ -109,7 +169,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
 
       <div className="alert-controls">
         <label>
-          Alert me on
+          Big swing alerts
           <select
             value={settings.mode === 'auto' ? 'auto' : String(settings.feet)}
             onChange={(e) => setSettings(e.target.value === 'auto' ? { ...settings, mode: 'auto' } : { ...settings, mode: 'custom', feet: Number(e.target.value) })}
@@ -118,6 +178,19 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
             {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((f) => <option key={f} value={f}>Swings of {f} ft or more</option>)}
           </select>
         </label>
+
+        <label>
+          Surge warning (live gauge vs forecast)
+          <select
+            value={settings.surgeFeet == null ? 'off' : String(settings.surgeFeet)}
+            onChange={(e) => setSettings({ ...settings, surgeFeet: e.target.value === 'off' ? null : Number(e.target.value) })}
+          >
+            {SURGE_CHOICES.map((f) => <option key={f} value={f}>{f} ft or more off the forecast</option>)}
+            <option value="off">Off</option>
+          </select>
+        </label>
+        <p className="hint surge-status">{surgeStatus}</p>
+
         <div className="alert-buttons">
           <button type="button" className={settings.notify ? 'secondary on' : 'secondary'} onClick={toggleNotify} aria-pressed={settings.notify}>
             {settings.notify ? '🔔 Notifications on' : '🔕 Notify me'}
@@ -125,7 +198,13 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
           <button type="button" className="secondary ghost" onClick={downloadCalendar} disabled={!alerts.length}>📅 Add to calendar</button>
         </div>
         {notifyMsg && <p className="hint">{notifyMsg}</p>}
-        {settings.notify && <p className="hint">You'll get a notification about 3 hours before each big swing while Tide Watch is open. For reminders when it's closed, use Add to calendar.</p>}
+        {settings.notify && (
+          <p className="hint">
+            While Tide Watch is open you'll be notified about 3 hours before each big swing
+            {settings.surgeFeet != null ? ', and as soon as the live gauge passes your surge level (checked every 6 minutes)' : ''}.
+            For swing reminders when it's closed, use Add to calendar.
+          </p>
+        )}
       </div>
     </section>
   )

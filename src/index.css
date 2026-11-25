@@ -338,3 +338,10 @@ footer a { color: var(--brand); }
 }
 .stale { color: var(--low); font-weight: 600; }
 .chart .legend text { font-size: 11px; fill: var(--muted); }
+.alert-banner.surge { background: #e6f2ff; color: #0f3d66; border-color: #9cc8ef; }
+.alert-banner .link { align-self: flex-start; padding: 0; min-height: 32px; }
+@media (prefers-color-scheme: dark) {
+  .alert-banner.surge { background: #12304d; color: #cfe6ff; border-color: #2a5580; }
+}
+.alert-controls label + label { margin-top: 10px; }
+.surge-status { margin: 6px 0 0 !important; }

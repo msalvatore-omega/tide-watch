@@ -3,7 +3,12 @@ import { useEffect, useRef, useState } from 'react'
 import { fetchLive, fetchLiveStations, distanceMiles } from './noaa.js'
 
 const REFRESH_MS = 6 * 60e3 // NOAA gauges report every 6 minutes
-export const SURGE_ALERT_FT = 1.0 // flag water this far above/below the prediction
+export const DEFAULT_SURGE_FT = 1.0 // flag water this far above/below the prediction
+export const SURGE_CHOICES = [0.5, 0.75, 1, 1.5, 2, 3]
+
+/** True when a live reading is at least `surgeFeet` off the forecast (null = warnings off). */
+export const isSurge = (reading, surgeFeet) =>
+  surgeFeet != null && reading?.diff != null && Math.abs(reading.diff) >= surgeFeet
 
 /**
  * Keeps live gauge data fresh while `enabled`.
@@ -101,8 +106,9 @@ export function diffText(diff) {
   return `${Math.abs(diff).toFixed(1)} ft ${diff > 0 ? 'above' : 'below'} predicted`
 }
 
-export function liveMood(live, fallbackMood) {
-  if (live.diff != null && live.diff >= SURGE_ALERT_FT) return 'Water is running well above the forecast: wind or storm surge. 🌬️'
-  if (live.diff != null && live.diff <= -SURGE_ALERT_FT) return 'Water is well below the forecast: wind is pushing it out. 🌬️'
-  return fallbackMood
+export function liveMood(live, fallbackMood, surgeFeet) {
+  if (!isSurge(live, surgeFeet)) return fallbackMood
+  return live.diff > 0
+    ? 'Water is running well above the forecast: wind or storm surge. 🌬️'
+    : 'Water is well below the forecast: wind is pushing it out. 🌬️'
 }
