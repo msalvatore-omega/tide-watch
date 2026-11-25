@@ -46,6 +46,10 @@ npm install
 npm run dev
 ```
 
+```bash
+npm test        # 37 unit tests: tide math, alerts, surge, sun/moon, planner, history
+```
+
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.
 
 ## Deploy

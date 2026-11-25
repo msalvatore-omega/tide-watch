@@ -14,7 +14,7 @@ import WeekTable from './components/WeekTable.jsx'
 import Planner from './components/Planner.jsx'
 import AlertsPanel, { AlertBanner, SurgeBanner, useSwingAlerts } from './components/AlertsPanel.jsx'
 
-const DEFAULT_STATION = '9414290' // San Francisco, CA
+const DEFAULT_STATION = '8574680' // Baltimore (Fort McHenry), MD
 const STORAGE_KEY = 'tidewatch.station'
 const MAX_READING_AGE_MS = 60 * 60e3 // older gauge readings aren't shown as "now"
 const TABS = [
