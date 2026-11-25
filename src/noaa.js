@@ -2,7 +2,7 @@
 // Docs: https://api.tidesandcurrents.noaa.gov/api/prod/
 const DATA_API = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter'
 const META_API = 'https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi'
-const APP_NAME = 'tide_watch_react' // NOAA asks clients to identify themselves
+const APP_NAME = 'tidely' // NOAA asks clients to identify themselves
 
 const pad = (n) => String(n).padStart(2, '0')
 const ymdUTC = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`

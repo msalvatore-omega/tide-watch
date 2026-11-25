@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { findAlerts, alertsToICS } from '../alerts.js'
 import { formatStationTime, formatCountdown, ft } from '../tides.js'
 import { diffText, isSurge, SURGE_CHOICES, DEFAULT_SURGE_FT } from '../live.js'
+import { pushSupported, needsHomeScreen, enablePush, syncPush, disablePush, sendTestPush } from '../push.js'
 
 const SETTINGS_KEY = 'tidewatch.alerts.v1'
 const NOTIFIED_KEY = 'tidewatch.notified.v1'
 const SURGE_STATE_KEY = 'tidewatch.surge.v1'
 const NOTIFY_LEAD_MS = 3 * 3600e3 // notify when a big swing starts within 3 hours
-const DEFAULTS = { mode: 'auto', feet: 6, notify: false, surgeFeet: DEFAULT_SURGE_FT }
+const DEFAULTS = { mode: 'auto', feet: 6, notify: false, push: false, surgeFeet: DEFAULT_SURGE_FT }
 
 const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback } }
 const store = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* ignore */ } }
@@ -57,11 +58,26 @@ export function SurgeBanner({ reading, surgeFeet, onShowLive }) {
 
 export default function AlertsPanel({ station, now, alerts, stats, threshold, settings, setSettings, reading, liveStatus }) {
   const [notifyMsg, setNotifyMsg] = useState('')
+  const [busy, setBusy] = useState(false)
   const supportsNotify = typeof Notification !== 'undefined' && 'serviceWorker' in navigator
+  // With background push on, the alerts server sends everything; the in-app checks below stand down.
+  const inApp = settings.notify && !settings.push
+
+  // Keep the alerts server watching the station and settings shown here.
+  const { mode, feet, surgeFeet } = settings
+  useEffect(() => {
+    if (!settings.notify || !settings.push) return
+    const t = setTimeout(() => {
+      syncPush(station, { mode, feet, surgeFeet })
+        .catch(() => enablePush(station, { mode, feet, surgeFeet })) // subscription expired: renew it
+        .catch((e) => setNotifyMsg(`Couldn't update background alerts: ${e.message}`))
+    }, 800)
+    return () => clearTimeout(t)
+  }, [station, mode, feet, surgeFeet, settings.notify, settings.push])
 
   // Big swings: notify shortly before each one.
   useEffect(() => {
-    if (!settings.notify || !canNotify() || !alerts) return
+    if (!inApp || !canNotify() || !alerts) return
     const due = alerts.filter((a) => a.from.time - now < NOTIFY_LEAD_MS)
     for (const a of due) {
       const key = `${station.id}:${a.from.time.toISOString()}`
@@ -80,7 +96,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
         })
         .catch(() => {})
     }
-  }, [alerts, now, settings.notify, station])
+  }, [alerts, now, inApp, station])
 
   // Surge: notify once when the water crosses the level, then stay quiet until it
   // eases back (below 75% of the level) or flips from above to below the forecast.
@@ -99,7 +115,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
       store(SURGE_STATE_KEY, episodes)
     }
     const stillActive = load(SURGE_STATE_KEY, {})[station.id]
-    if (!over || stillActive || !settings.notify || !canNotify() || readingAge > 60 * 60e3) return
+    if (!over || stillActive || !inApp || !canNotify() || readingAge > 60 * 60e3) return
 
     notify(
       `🌬️ Water ${diffText(readingDiff)} at ${station.name}`,
@@ -112,22 +128,48 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
         store(SURGE_STATE_KEY, latest)
       })
       .catch(() => {})
-  }, [readingTime, readingDiff, readingAge, settings.surgeFeet, settings.notify, station])
+  }, [readingTime, readingDiff, readingAge, settings.surgeFeet, inApp, station])
 
   const toggleNotify = async () => {
-    if (settings.notify) return setSettings({ ...settings, notify: false })
+    setNotifyMsg('')
+    if (settings.notify) {
+      if (settings.push) disablePush().catch(() => {})
+      return setSettings({ ...settings, notify: false, push: false })
+    }
+    if (needsHomeScreen()) {
+      return setNotifyMsg('On iPhone and iPad, first add Tidely to your Home Screen (Share → Add to Home Screen), then open it from there and turn on alerts.')
+    }
     if (!supportsNotify) return setNotifyMsg('This browser cannot show notifications. Use “Add to calendar” instead.')
     const perm = await Notification.requestPermission()
     if (perm !== 'granted') return setNotifyMsg('Notifications are blocked. Allow them in your browser settings, or use “Add to calendar”.')
+    if (!pushSupported()) return setSettings({ ...settings, notify: true, push: false })
+    setBusy(true)
+    try {
+      await enablePush(station, settings)
+      setSettings({ ...settings, notify: true, push: true })
+    } catch (e) {
+      setSettings({ ...settings, notify: true, push: false })
+      setNotifyMsg(`Background alerts aren't available right now (${e.message}). You'll still get alerts while Tidely is open.`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sendTest = async () => {
     setNotifyMsg('')
-    setSettings({ ...settings, notify: true })
+    try {
+      await sendTestPush()
+      setNotifyMsg('Test sent. It should arrive within a few seconds, even if you close Tidely now.')
+    } catch (e) {
+      setNotifyMsg(`Test failed: ${e.message}`)
+    }
   }
 
   const downloadCalendar = () => {
     const blob = new Blob([alertsToICS(alerts, station.name)], { type: 'text/calendar' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `tide-swings-${station.id}.ics`
+    a.download = `tidely-swings-${station.id}.ics`
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 1000)
   }
@@ -138,6 +180,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
     : liveStatus === 'unavailable' ? 'This spot has no live gauge, so surge warnings can’t run here. The Live gauge tab offers the nearest one.'
     : liveStatus === 'loading' ? 'Checking the live gauge…'
     : liveStatus === 'error' ? 'Couldn’t reach the live gauge; retrying every 6 minutes.'
+    : settings.notify && settings.push ? 'Checked every 5 minutes by the Tidely alerts server.'
     : 'Checked while the Live gauge view is open, or in the background when notifications are on.'
 
   return (
@@ -192,15 +235,25 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
         <p className="hint surge-status">{surgeStatus}</p>
 
         <div className="alert-buttons">
-          <button type="button" className={settings.notify ? 'secondary on' : 'secondary'} onClick={toggleNotify} aria-pressed={settings.notify}>
-            {settings.notify ? '🔔 Notifications on' : '🔕 Notify me'}
+          <button type="button" className={settings.notify ? 'secondary on' : 'secondary'} onClick={toggleNotify} aria-pressed={settings.notify} disabled={busy}>
+            {busy ? 'Turning on…' : settings.notify ? '🔔 Notifications on' : '🔕 Notify me'}
           </button>
           <button type="button" className="secondary ghost" onClick={downloadCalendar} disabled={!alerts.length}>📅 Add to calendar</button>
         </div>
+        {settings.notify && settings.push && (
+          <button type="button" className="link test-push" onClick={sendTest}>Send a test notification</button>
+        )}
         {notifyMsg && <p className="hint">{notifyMsg}</p>}
-        {settings.notify && (
+        {settings.notify && settings.push && (
           <p className="hint">
-            While Tide Watch is open you'll be notified about 3 hours before each big swing
+            ✅ Alerts for {station.name} arrive even when Tidely is closed: about 3 hours before each big swing
+            {settings.surgeFeet != null ? ', and when the live gauge passes your surge level' : ''}. Checked every 5 minutes.
+            This device follows one station, the one you're viewing.
+          </p>
+        )}
+        {settings.notify && !settings.push && (
+          <p className="hint">
+            While Tidely is open you'll be notified about 3 hours before each big swing
             {settings.surgeFeet != null ? ', and as soon as the live gauge passes your surge level (checked every 6 minutes)' : ''}.
             For swing reminders when it's closed, use Add to calendar.
           </p>

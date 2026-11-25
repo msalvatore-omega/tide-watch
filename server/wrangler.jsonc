@@ -1,0 +1,24 @@
+// Tidely alerts server — Cloudflare Workers (free plan).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tidely-alerts",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+
+  // Check tides and send alerts every 5 minutes.
+  "triggers": { "crons": ["*/5 * * * *"] },
+
+  // All subscriptions and state live in one SQLite-backed Durable Object.
+  "durable_objects": { "bindings": [{ "name": "STORE", "class_name": "AlertStore" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AlertStore"] }],
+
+  "vars": {
+    "SITE_URL": "https://msalvatore-omega.github.io/tide-watch/",
+    // Contact URL sent to push services (required by the Web Push standard).
+    "VAPID_SUBJECT": "https://msalvatore-omega.github.io/tide-watch/",
+    "ALLOWED_ORIGINS": "https://msalvatore-omega.github.io,http://localhost:5173,http://localhost:4173"
+  },
+
+  "observability": { "enabled": true }
+}

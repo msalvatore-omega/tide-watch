@@ -97,7 +97,7 @@ export default function App() {
   return (
     <main>
       <header>
-        <h1>🌊 Tide Watch</h1>
+        <h1>🌊 Tidely</h1>
         {!picking && (
           <button className="station" onClick={() => setPicking(true)} aria-label="Change station">
             <span className="station-name">{station ? `${station.name}${station.state ? `, ${station.state}` : ''}` : 'Loading…'}</span>

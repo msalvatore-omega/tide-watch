@@ -17,5 +17,20 @@
   "env": {
     "browser": true,
     "es2024": true
-  }
+  },
+  "ignorePatterns": [
+    "dist",
+    "server/node_modules",
+    "server/.wrangler"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "server/test/**"
+      ],
+      "env": {
+        "node": true
+      }
+    }
+  ]
 }

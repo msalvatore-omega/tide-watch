@@ -1,6 +1,6 @@
 {
-  "name": "Tide Watch",
-  "short_name": "Tides",
+  "name": "Tidely",
+  "short_name": "Tidely",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#eaf6ff",

@@ -41,13 +41,13 @@ export function findAlerts(events, now, settings, days = 7) {
 export function alertsToICS(alerts, stationName, reminderMinutes = 120) {
   const stamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const esc = (s) => s.replace(/([,;\\])/g, '\\$1')
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tide Watch//Swing Alerts//EN', 'CALSCALE:GREGORIAN']
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tidely//Swing Alerts//EN', 'CALSCALE:GREGORIAN']
   for (const a of alerts) {
     const what = a.rising ? 'rises' : 'drops'
     const title = `🌊 Big tide swing: water ${what} ${a.size.toFixed(1)} ft`
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${stamp(a.from.time)}-${esc(stationName).replace(/\W/g, '')}@tidewatch`,
+      `UID:${stamp(a.from.time)}-${esc(stationName).replace(/\W/g, '')}@tidely`,
       `DTSTAMP:${stamp(new Date())}`,
       `DTSTART:${stamp(a.from.time)}`,
       `DTEND:${stamp(a.to.time)}`,
