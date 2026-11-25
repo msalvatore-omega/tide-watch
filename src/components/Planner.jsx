@@ -55,11 +55,11 @@ export default function Planner({ events, now, station, live }) {
 
   return (
     <section className="panel planner">
-      <h2>Tide window planner</h2>
-      <p className="hint">Find when the water is high enough to launch, or low enough to walk the flats.</p>
+      <h2>Tidal window planner</h2>
+      <p className="hint">Find when there is enough water to launch, float off or cross a bar, or little enough to work the flats.</p>
 
       <div className="plan-controls">
-        <span>Water</span>
+        <span>Height of tide</span>
         <div className="seg" role="radiogroup" aria-label="Above or below">
           {['above', 'below'].map((d) => (
             <button key={d} type="button" role="radio" aria-checked={opts.dir === d} className={opts.dir === d ? 'on' : ''} onClick={() => update({ dir: d })}>
@@ -86,13 +86,13 @@ export default function Planner({ events, now, station, live }) {
       </div>
 
       <p className="hint">
-        Next 7 days here range from {ft(lowest)} to {ft(highest)}.
+        Predicted heights over the next 7 days: {ft(lowest)} to {ft(highest)}.
         {windows.length > 0 && ` ${windows.length} window${windows.length > 1 ? 's' : ''}, ${formatDuration(totalMs)} in all.`}
       </p>
 
       {windows.length === 0 ? (
         <p className="calm">
-          No times in the next 7 days when the water is {opts.dir} {ft(opts.feet)}
+          No times in the next 7 days with the height of tide {opts.dir} {ft(opts.feet)}
           {opts.daylight ? ' in daylight' : ''}.
         </p>
       ) : (
@@ -106,7 +106,7 @@ export default function Planner({ events, now, station, live }) {
                     {w.start <= now.getTime() ? 'Now' : formatAtStation(new Date(w.start), off(w.start))} – {formatAtStation(new Date(w.end), off(w.end))}
                   </span>
                   <span className="dur">{formatDuration(w.end - w.start)}</span>
-                  <span className="peak">{opts.dir === 'above' ? 'peak' : 'lowest'} {ft(w.peak)}</span>
+                  <span className="peak">{opts.dir === 'above' ? 'max' : 'min'} {ft(w.peak)}</span>
                 </li>
               ))}
             </ul>
@@ -114,8 +114,8 @@ export default function Planner({ events, now, station, live }) {
         ))
       )}
       <p className="hint">
-        Based on NOAA predictions (times ± about 15 min).
-        {live?.diff != null && Math.abs(live.diff) >= 0.2 && ` Right now the water is ${diffText(live.diff)}, so wind may shift these windows.`}
+        From NOAA predictions (times ± about 15 min); allow a margin for your draft.
+        {live?.diff != null && Math.abs(live.diff) >= 0.2 && ` The water is now running ${diffText(live.diff)}, so wind may shift these windows.`}
       </p>
     </section>
   )

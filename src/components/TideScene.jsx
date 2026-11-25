@@ -27,7 +27,7 @@ export default function TideScene({ fraction, rising, night, highLabel, lowLabel
       className="scene"
       viewBox={`0 ${VIEW_TOP} ${W} ${VIEW_H}`}
       role="img"
-      aria-label={`Illustration: the tide is ${Math.round(fraction * 100)}% of the way from low to high and ${rising ? 'rising' : 'falling'}.`}
+      aria-label={`Illustration: the tide is ${Math.round(fraction * 100)}% of the way from low water to high water and ${rising ? 'flooding' : 'ebbing'}.`}
     >
       <defs>
         <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">

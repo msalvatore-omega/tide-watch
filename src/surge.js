@@ -38,13 +38,13 @@ export function liveNow({ observed, predicted }, now) {
 
 export function diffText(diff) {
   if (diff == null) return ''
-  if (Math.abs(diff) < 0.05) return 'right on prediction'
+  if (Math.abs(diff) < 0.05) return 'on prediction'
   return `${Math.abs(diff).toFixed(1)} ft ${diff > 0 ? 'above' : 'below'} predicted`
 }
 
 export function liveMood(live, fallbackMood, surgeFeet) {
   if (!isSurge(live, surgeFeet)) return fallbackMood
   return live.diff > 0
-    ? 'Water is running well above the forecast: wind or storm surge. 🌬️'
-    : 'Water is well below the forecast: wind is pushing it out. 🌬️'
+    ? 'Running well above prediction: wind set-up or storm surge. 🌬️'
+    : 'Running well below prediction: offshore wind is blowing the water out. 🌬️'
 }

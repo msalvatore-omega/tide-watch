@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchCurrentStations, fetchCurrents, distanceMiles } from '../noaa.js'
 import { currentNow, compass } from '../currents.js'
-import { offsetAt, formatAtStation, formatCountdown, stationDate, formatDay } from '../tides.js'
+import { offsetAt, formatAtStation, formatCountdown, stationDate, formatDay, nmText } from '../tides.js'
 
 const CHOICE_KEY = 'tidely.currentStation.v1' // { [tideStationId]: currentStationId }
 const loadChoices = () => { try { return JSON.parse(localStorage.getItem(CHOICE_KEY)) ?? {} } catch { return {} } }
@@ -64,7 +64,7 @@ export default function Currents({ station, events: tideEvents, now }) {
   }
   const dirText = (type, e) => {
     const d = type === 'flood' ? e.floodDir : e.ebbDir
-    return d == null ? '' : `toward ${compass(d)}`
+    return d == null ? '' : `· set ${compass(d)}`
   }
 
   return (
@@ -74,12 +74,12 @@ export default function Currents({ station, events: tideEvents, now }) {
         Current station
         <select value={selected.id} onChange={(e) => pick(e.target.value)}>
           {nearby.map((s) => (
-            <option key={s.id} value={s.id}>{s.name} · {s.miles.toFixed(1)} mi{s.depth != null ? ` · ${Math.round(s.depth)} ft deep` : ''}</option>
+            <option key={s.id} value={s.id}>{s.name} · {nmText(s.miles)}{s.depth != null ? ` · at ${Math.round(s.depth)} ft depth` : ''}</option>
           ))}
         </select>
       </label>
       {selected.miles > 15 && (
-        <p className="hint">⚠️ The nearest current station is {Math.round(selected.miles)} miles away. Currents here may be quite different.</p>
+        <p className="hint">⚠️ The nearest current station is {nmText(selected.miles)} away. The current here may be quite different.</p>
       )}
 
       {data.status === 'loading' && <p className="hint">Loading current predictions…</p>}
@@ -89,17 +89,17 @@ export default function Currents({ station, events: tideEvents, now }) {
         <>
           <div className={`cur-now ${cur.state}`}>
             <div className="cur-state">
-              {cur.state === 'slack' ? '⏸️ Slack water' : cur.state === 'flood' ? '➡️ Flooding (coming in)' : '⬅️ Ebbing (going out)'}
+              {cur.state === 'slack' ? '⏸️ Slack water' : cur.state === 'flood' ? '➡️ Flood current' : '⬅️ Ebb current'}
             </div>
             <div className="cur-speed">
               {cur.state === 'slack'
-                ? 'Little or no current right now'
-                : <>about <strong>{cur.knots.toFixed(1)} kt</strong>{cur.dir != null ? ` toward ${compass(cur.dir)} (${cur.dir}°)` : ''} · {cur.building ? 'building' : 'easing'}</>}
+                ? 'Little or no current at present'
+                : <>{cur.dir != null ? <>Set <strong>{compass(cur.dir)} ({String(cur.dir).padStart(3, '0')}°T)</strong> · </> : ''}drift about <strong>{cur.knots.toFixed(1)} kt</strong> · {cur.building ? 'making' : 'easing'}</>}
             </div>
           </div>
 
           <div className="cards cur-cards">
-            {cur.nextSlack && <Mini label="Next slack" big={time(cur.nextSlack.time)} sub={formatCountdown(cur.nextSlack.time - now)} />}
+            {cur.nextSlack && <Mini label="Next slack water" big={time(cur.nextSlack.time)} sub={formatCountdown(cur.nextSlack.time - now)} />}
             {cur.nextFlood && <Mini label="Next max flood" big={time(cur.nextFlood.time)} sub={`${cur.nextFlood.knots.toFixed(1)} kt ${dirText('flood', cur.nextFlood)}`} />}
             {cur.nextEbb && <Mini label="Next max ebb" big={time(cur.nextEbb.time)} sub={`${cur.nextEbb.knots.toFixed(1)} kt ${dirText('ebb', cur.nextEbb)}`} />}
           </div>
@@ -125,8 +125,9 @@ export default function Currents({ station, events: tideEvents, now }) {
       )}
       {events && !cur && <p className="hint">No current predictions for right now at this station.</p>}
       <p className="hint small-print">
-        Flood = water flowing in; ebb = flowing out; slack = the pause between. NOAA predictions; wind and river flow change real currents.
-        Slack water is often not at the same time as high or low tide.
+        Flood current sets inshore or up the bay; ebb sets seaward; slack water is the turn between. Set is the direction the
+        current flows toward (degrees true); drift is its rate in knots. NOAA predictions: wind and river flow alter the real
+        current, and slack water often does not coincide with high or low water.
       </p>
     </section>
   )

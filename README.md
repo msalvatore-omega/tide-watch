@@ -6,6 +6,15 @@ high and low tides are, and alerts you to unusually large tide swings.
 Data comes from NOAA's free [CO-OPS Tides & Currents API](https://api.tidesandcurrents.noaa.gov/api/prod/)
 (no API key needed). Zip-code search uses [Zippopotam.us](https://zippopotam.us).
 
+## Language and units
+
+Tidely speaks the way tide tables and mariners do: **high water / low water** (HW / LW),
+**flood** and **ebb**, **stand**, **springs** and **neaps**, **tidal range**, **observed**
+vs **predicted**, heights above **chart datum (MLLW)**, wind in **knots** with **Beaufort
+force**, current **set** (degrees true) and **drift**, distances in **nautical miles**,
+and a **24-hour clock** (a 12-hour option is in the footer). "Flood stage" and "coastal
+flooding" always mean water over the land, to keep them apart from the flood tide.
+
 ## Features
 
 Four tabs:
@@ -56,7 +65,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 56 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing
+npm test        # 58 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.

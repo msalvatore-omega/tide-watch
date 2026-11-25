@@ -46,6 +46,8 @@ describe('big-swing alerts', () => {
     expect(ics.match(/TRIGGER:-PT120M/g)).toHaveLength(alerts.length)
     expect(ics).toContain('Baltimore\\, MD') // commas escaped per the iCalendar format
     expect(ics).toMatch(/DTSTART:\d{8}T\d{6}Z/)
+    expect(ics).toMatch(/SUMMARY:🌊 Large tidal range: rise of 2\.0 ft/)
+    expect(ics).toMatch(/LW -0\.2 ft → HW 1\.8 ft\. About 1\.9× the usual range here\./)
   })
 })
 
@@ -80,9 +82,9 @@ describe('live reading vs forecast', () => {
     expect(isSurge(null, 1)).toBe(false)
     expect(diffText(0.31)).toBe('0.3 ft above predicted')
     expect(diffText(-1.26)).toBe('1.3 ft below predicted')
-    expect(diffText(0.02)).toBe('right on prediction')
-    expect(liveMood({ diff: 1.5 }, 'fallback', 1)).toMatch(/above the forecast/)
-    expect(liveMood({ diff: -1.5 }, 'fallback', 1)).toMatch(/below the forecast/)
+    expect(diffText(0.02)).toBe('on prediction')
+    expect(liveMood({ diff: 1.5 }, 'fallback', 1)).toMatch(/above prediction: wind set-up or storm surge/)
+    expect(liveMood({ diff: -1.5 }, 'fallback', 1)).toMatch(/below prediction: offshore wind/)
     expect(liveMood({ diff: 0.2 }, 'fallback', 1)).toBe('fallback')
   })
 })

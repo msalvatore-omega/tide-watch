@@ -35,8 +35,8 @@ export default function Glance({ station, online, ...data }) {
   }
 
   return (
-    <section className="panel glance" aria-label="At a glance">
-      <h2>✨ At a glance</h2>
+    <section className="panel glance" aria-label="Tidal summary">
+      <h2>⚓ Tidal summary</h2>
       <p className="glance-text">{lines.join(' ')}</p>
 
       <div className="glance-chips">
@@ -56,7 +56,7 @@ export default function Glance({ station, online, ...data }) {
               value={question}
               maxLength={300}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ask anything else…"
+              placeholder="Ask about tides, currents or weather here…"
               aria-label="Ask a question about tides at this station (answered by AI)"
             />
             <button type="submit" className="secondary" disabled={answer.status === 'loading' || question.trim().length < 3}>Ask AI</button>

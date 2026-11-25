@@ -29,13 +29,13 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
   if (!current && !records) {
     currentFact = null // no long-term records for this gauge: can't say how unusual this is
   } else if (!current) {
-    currentFact = <>{dir === 'high' ? '📈' : '📉'} <strong>The {word}est water since records began{records ? ` in ${records.since}` : ''}!</strong></>
+    currentFact = <>{dir === 'high' ? '📈' : '📉'} <strong>The {word}est water observed since records began{records ? ` in ${records.since}` : ''}.</strong></>
   } else if (now - current.time < 3 * DAY) {
-    currentFact = <>🙂 Normal here: the water was last this {word} ({ft(level)}) {relative(current.time, now)}.</>
+    currentFact = <>🙂 Nothing unusual: the tide last stood this {word} ({ft(level)}) {relative(current.time, now)}.</>
   } else {
     currentFact = (
       <>
-        {dir === 'high' ? '📈' : '📉'} <strong>{dir === 'high' ? 'Highest' : 'Lowest'} water since {date(current)}</strong> ({relative(current.time, now)}),
+        {dir === 'high' ? '📈' : '📉'} <strong>{dir === 'high' ? 'Highest' : 'Lowest'} observed water since {date(current)}</strong> ({relative(current.time, now)}),
         when it {dir === 'high' ? 'reached' : 'fell to'} {ft(current.height)}.
       </>
     )
@@ -44,7 +44,7 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
   // One-line summary; the details open on tap (keeps the Now tab short).
   const headline = !current && !records ? 'History and records'
     : !current ? `${dir === 'high' ? 'Highest' : 'Lowest'} water on record`
-    : now - current.time < 3 * DAY ? `Normal: last this ${word} ${relative(current.time, now)}`
+    : now - current.time < 3 * DAY ? `Nothing unusual: last this ${word} ${relative(current.time, now)}`
     : `${dir === 'high' ? 'Highest' : 'Lowest'} water since ${date(current)}`
   const unusual = !current ? Boolean(records) : now - current.time >= 3 * DAY
 
@@ -52,23 +52,23 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
     <details className="panel history" open={unusual}>
       <summary><span className="history-title">📜 History</span> <span className="history-headline">{headline}</span></summary>
       <ul className="facts">
-        {currentFact && <li><span className="fact-label">Right now · {ft(level)}</span>{currentFact}</li>}
+        {currentFact && <li><span className="fact-label">Height of tide now · {ft(level)}</span>{currentFact}</li>}
         {flood && (
           <li>
-            <span className="fact-label">Flooding · starts at {ft(flood.minor)}</span>
+            <span className="fact-label">Coastal flooding · minor flood stage {ft(flood.minor)}</span>
             {lastFlood
-              ? <>🌊 Last reached flood level {relative(lastFlood.time, now)}, on {date(lastFlood)} ({ft(lastFlood.height)}).</>
-              : records ? <>🌊 Hasn't reached flood level since records began in {records.since}.</> : <>🌊 No flood on record in recent months.</>}
+              ? <>🌊 Last reached flood stage {relative(lastFlood.time, now)}, on {date(lastFlood)} ({ft(lastFlood.height)}).</>
+              : records ? <>🌊 Has not reached flood stage since records began in {records.since}.</> : <>🌊 No flood stage on record in recent months.</>}
           </li>
         )}
         {records && (
           <li>
-            <span className="fact-label">Records since {records.since}</span>
-            🏆 Highest {ft(records.high.height)} on {date(records.high)} · lowest {ft(records.low.height)} on {date(records.low)}.
+            <span className="fact-label">Extremes since {records.since}</span>
+            🏆 Highest observed {ft(records.high.height)} on {date(records.high)} · lowest observed {ft(records.low.height)} on {date(records.low)}.
           </li>
         )}
       </ul>
-      <p className="hint small-print">NOAA verified records, on today's tide datum (sea level has risen since early years).</p>
+      <p className="hint small-print">NOAA verified observations, referred to today's chart datum (sea level has risen since the early years).</p>
     </details>
   )
 }

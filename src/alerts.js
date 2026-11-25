@@ -41,10 +41,10 @@ export function findAlerts(events, now, settings, days = 7) {
 export function alertsToICS(alerts, stationName, reminderMinutes = 120) {
   const stamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const esc = (s) => s.replace(/([,;\\])/g, '\\$1')
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tidely//Swing Alerts//EN', 'CALSCALE:GREGORIAN']
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tidely//Tidal Range Alerts//EN', 'CALSCALE:GREGORIAN']
   for (const a of alerts) {
-    const what = a.rising ? 'rises' : 'drops'
-    const title = `🌊 Big tide swing: water ${what} ${a.size.toFixed(1)} ft`
+    const title = `🌊 Large tidal range: ${a.rising ? 'rise' : 'fall'} of ${a.size.toFixed(1)} ft`
+    const [fromName, toName] = a.rising ? ['LW', 'HW'] : ['HW', 'LW']
     lines.push(
       'BEGIN:VEVENT',
       `UID:${stamp(a.from.time)}-${esc(stationName).replace(/\W/g, '')}@tidely`,
@@ -52,7 +52,7 @@ export function alertsToICS(alerts, stationName, reminderMinutes = 120) {
       `DTSTART:${stamp(a.from.time)}`,
       `DTEND:${stamp(a.to.time)}`,
       `SUMMARY:${esc(title)}`,
-      `DESCRIPTION:${esc(`${stationName}: ${a.from.height.toFixed(1)} ft → ${a.to.height.toFixed(1)} ft. About ${a.ratio.toFixed(1)}× a typical swing here.`)}`,
+      `DESCRIPTION:${esc(`${stationName}: ${fromName} ${a.from.height.toFixed(1)} ft → ${toName} ${a.to.height.toFixed(1)} ft. About ${a.ratio.toFixed(1)}× the usual range here.`)}`,
       'BEGIN:VALARM',
       'ACTION:DISPLAY',
       `DESCRIPTION:${esc(title)}`,

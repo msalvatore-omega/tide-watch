@@ -53,7 +53,7 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
 
   return (
     <div ref={ref} className="chart">
-      <svg width={width} height={HEIGHT} role="img" aria-label="Tide height: measured and forecast, 9 hours ago to 24 hours ahead">
+      <svg width={width} height={HEIGHT} role="img" aria-label="Height of tide: observed and predicted, 9 hours ago to 24 hours ahead">
         <defs>
           <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#3aa0e6" stopOpacity="0.4" />
@@ -74,18 +74,18 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
         {floodLines.map(([name, v]) => (
           <g key={name}>
             <line x1={PAD.left} x2={width - PAD.right} y1={y(v)} y2={y(v)} className="flood-line" />
-            <text x={width - PAD.right} y={y(v) - 4} textAnchor="end" className="flood-label">{name} flood {ft(v)}</text>
+            <text x={width - PAD.right} y={y(v) - 4} textAnchor="end" className="flood-label">{name} flood stage {ft(v)}</text>
           </g>
         ))}
         <path d={toArea(samples, line)} fill="url(#chartFill)" />
         <path d={line} fill="none" className="line-forecast" strokeWidth="2" strokeDasharray={measured.length ? '5 4' : undefined} />
         {measured.length > 1 && <path d={toPath(measured)} fill="none" stroke="#e5484d" strokeWidth="2.5" />}
         {measured.length > 0 && (
-          <g className="legend" transform={`translate(${width - 160} 0)`}>
+          <g className="legend" transform={`translate(${width - 168} 0)`}>
             <line x1="0" x2="18" y1="10" y2="10" stroke="#e5484d" strokeWidth="2.5" />
-            <text x="22" y="14">Measured</text>
+            <text x="22" y="14">Observed</text>
             <line x1="88" x2="106" y1="10" y2="10" className="line-forecast" strokeWidth="2" strokeDasharray="5 4" />
-            <text x="110" y="14">Forecast</text>
+            <text x="110" y="14">Predicted</text>
           </g>
         )}
         {shown.map((e) => {

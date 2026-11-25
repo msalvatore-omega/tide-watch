@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { findAlerts, alertsToICS } from '../alerts.js'
-import { formatStationTime, formatCountdown, ft } from '../tides.js'
+import { formatStationTime, formatCountdown, hwlw, ft } from '../tides.js'
 import { diffText, isSurge, SURGE_CHOICES, DEFAULT_SURGE_FT } from '../live.js'
 import { pushSupported, needsHomeScreen, enablePush, syncPush, disablePush, sendTestPush } from '../push.js'
 import { NOTIFICATIONS_ENABLED } from '../config.js'
@@ -52,9 +52,9 @@ export function AlertBanner({ alerts, now }) {
   if (!soon) return null
   return (
     <div className="alert-banner" role="status">
-      <strong>⚠️ Big swing {soon.inProgress ? 'now' : formatCountdown(soon.from.time - now)}</strong>
+      <strong>⚠️ Large tidal range {soon.inProgress ? 'under way' : formatCountdown(soon.from.time - now)}</strong>
       <span>
-        {soon.rising ? 'Rises' : 'Drops'} {ft(soon.size)} by {formatStationTime(soon.to.local)} · {soon.ratio.toFixed(1)}× typical
+        {soon.rising ? 'Rise' : 'Fall'} of {ft(soon.size)} to {hwlw(soon.to)} {formatStationTime(soon.to.local)} · {soon.ratio.toFixed(1)}× the usual range
       </span>
     </div>
   )
@@ -67,7 +67,7 @@ export function SurgeBanner({ reading, surgeFeet, onShowLive }) {
     <div className="alert-banner surge" role="status">
       <strong>🌬️ Water is {diffText(reading.diff)}</strong>
       <span>
-        Gauge {ft(reading.height)} vs forecast {ft(reading.predicted)}: wind or storm.
+        Observed {ft(reading.height)}, predicted {ft(reading.predicted)}: {reading.diff > 0 ? 'wind set-up or storm surge' : 'offshore wind blowing the water out'}.
         {onShowLive && <> <button type="button" className="link inline" onClick={onShowLive}>See live →</button></>}
       </span>
     </div>
@@ -105,8 +105,8 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
       const key = `${station.id}:${a.from.time.toISOString()}`
       if (load(NOTIFIED_KEY, {})[key]) continue
       notify(
-        `🌊 Big tide swing at ${station.name}`,
-        `Water ${a.rising ? 'rises' : 'drops'} ${ft(a.size)} from ${formatStationTime(a.from.local, { withDay: false })} to ${formatStationTime(a.to.local, { withDay: false })}.`,
+        `🌊 Large tidal range at ${station.name}`,
+        `${a.rising ? 'Rise' : 'Fall'} of ${ft(a.size)}: ${hwlw(a.from)} ${formatStationTime(a.from.local, { withDay: false })} to ${hwlw(a.to)} ${formatStationTime(a.to.local, { withDay: false })}.`,
         key, // same tag = replaces rather than duplicates
       )
         .then(() => {
@@ -141,7 +141,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
 
     notify(
       `🌬️ Water ${diffText(readingDiff)} at ${station.name}`,
-      `The live gauge reads ${Math.abs(readingDiff).toFixed(1)} ft ${dir} the tide forecast. Wind or a storm is moving the water.`,
+      `The tide gauge reads ${Math.abs(readingDiff).toFixed(1)} ft ${dir} prediction: ${dir === 'above' ? 'wind set-up or storm surge' : 'offshore wind blowing the water out'}.`,
       `${station.id}:surge`,
     )
       .then(() => {
@@ -191,17 +191,17 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
     const blob = new Blob([alertsToICS(alerts, station.name)], { type: 'text/calendar' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `tidely-swings-${station.id}.ics`
+    a.download = `tidely-tidal-ranges-${station.id}.ics`
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 1000)
   }
 
   const surgeStatus =
     settings.surgeFeet == null ? 'Surge warnings are off.'
-    : liveStatus === 'ok' && reading ? `Live gauge right now: ${diffText(reading.diff)} (${ft(reading.height)} measured).`
-    : liveStatus === 'unavailable' ? 'This spot has no live gauge, so surge warnings can’t run here.'
-    : liveStatus === 'loading' ? 'Checking the live gauge…'
-    : liveStatus === 'error' ? 'Couldn’t reach the live gauge; retrying every 6 minutes.'
+    : liveStatus === 'ok' && reading ? `Tide gauge now: ${diffText(reading.diff)} (${ft(reading.height)} observed).`
+    : liveStatus === 'unavailable' ? 'This station has no tide gauge, so surge warnings can’t run here.'
+    : liveStatus === 'loading' ? 'Reading the tide gauge…'
+    : liveStatus === 'error' ? 'Tide gauge unreachable; retrying every 6 minutes.'
     : pushOn ? 'Checked every 5 minutes by the Tidely alerts server.'
     : 'Checked every 6 minutes while Tidely is open.'
 
@@ -210,25 +210,25 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
   return (
     <section className="panel alerts">
       <div className="panel-head">
-        <h2>Big swings · next 7 days</h2>
+        <h2>Large ranges · next 7 days</h2>
         {alerts.length > 0 && (
           <button type="button" className="link small" onClick={downloadCalendar}>📅 Add to calendar</button>
         )}
       </div>
 
       {alerts.length === 0 ? (
-        <p className="calm">😌 No big swings in the next week.</p>
+        <p className="calm">😌 No unusually large ranges in the next week.</p>
       ) : (
         <ul className="alert-list">
           {shown.map((a) => (
             <li key={a.from.time.toISOString()} className={a.inProgress ? 'live' : ''}>
               <div className="swing">
                 <span className="size">{a.rising ? '⬆️' : '⬇️'} {ft(a.size)}</span>
-                <span className="ratio">{a.ratio.toFixed(1)}× typical</span>
+                <span className="ratio">{a.ratio.toFixed(1)}× usual</span>
               </div>
               <div className="when">
-                {formatStationTime(a.from.local)} → {formatStationTime(a.to.local, { withDay: false })}
-                <small>{a.inProgress ? 'Happening now' : formatCountdown(a.from.time - now)} · {ft(a.from.height)} to {ft(a.to.height)}</small>
+                {hwlw(a.from)} {formatStationTime(a.from.local)} → {hwlw(a.to)} {formatStationTime(a.to.local, { withDay: false })}
+                <small>{a.inProgress ? 'Under way' : formatCountdown(a.from.time - now)} · {ft(a.from.height)} to {ft(a.to.height)}</small>
               </div>
             </li>
           ))}
@@ -244,27 +244,27 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
         <summary>⚙️ Alert settings</summary>
         <div className="alert-controls">
           <p className="hint">
-            A typical swing here is {ft(stats.typical)}. Flagging swings of {ft(threshold)} or more
-            {settings.mode === 'auto' ? ' (the biggest 10% this month)' : ''}.
+            The usual range here, between one high water and the next low, is {ft(stats.typical)}. Flagging ranges of {ft(threshold)} or more
+            {settings.mode === 'auto' ? ' (the largest 10% this month)' : ''}.
           </p>
           <label>
-            Big swing alerts
+            Large-range alerts
             <select
               value={settings.mode === 'auto' ? 'auto' : String(settings.feet)}
               onChange={(e) => setSettings(e.target.value === 'auto' ? { ...settings, mode: 'auto' } : { ...settings, mode: 'custom', feet: Number(e.target.value) })}
             >
-              <option value="auto">Unusually big swings for this spot</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((f) => <option key={f} value={f}>Swings of {f} ft or more</option>)}
+              <option value="auto">Unusually large for this station</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((f) => <option key={f} value={f}>Ranges of {f} ft or more</option>)}
             </select>
           </label>
 
           <label>
-            Surge warning (live gauge vs forecast)
+            Surge warning (observed vs predicted)
             <select
               value={settings.surgeFeet == null ? 'off' : String(settings.surgeFeet)}
               onChange={(e) => setSettings({ ...settings, surgeFeet: e.target.value === 'off' ? null : Number(e.target.value) })}
             >
-              {SURGE_CHOICES.map((f) => <option key={f} value={f}>{f} ft or more off the forecast</option>)}
+              {SURGE_CHOICES.map((f) => <option key={f} value={f}>{f} ft or more off prediction</option>)}
               <option value="off">Off</option>
             </select>
           </label>
@@ -286,16 +286,16 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
               {notifyMsg && <p className="hint">{notifyMsg}</p>}
               {pushOn && (
                 <p className="hint">
-                  ✅ Alerts for {station.name} arrive even when Tidely is closed: about 3 hours before each big swing
-                  {settings.surgeFeet != null ? ', and when the live gauge passes your surge level' : ''}. Checked every 5 minutes.
+                  ✅ Alerts for {station.name} arrive even when Tidely is closed: about 3 hours before each large range
+                  {settings.surgeFeet != null ? ', and when the tide gauge passes your surge level' : ''}. Checked every 5 minutes.
                   This device follows one station, the one you're viewing.
                 </p>
               )}
               {inApp && (
                 <p className="hint">
-                  While Tidely is open you'll be notified about 3 hours before each big swing
-                  {settings.surgeFeet != null ? ', and as soon as the live gauge passes your surge level (checked every 6 minutes)' : ''}.
-                  For swing reminders when it's closed, use Add to calendar.
+                  While Tidely is open you'll be notified about 3 hours before each large range
+                  {settings.surgeFeet != null ? ', and as soon as the tide gauge passes your surge level (checked every 6 minutes)' : ''}.
+                  For reminders when it's closed, use Add to calendar.
                 </p>
               )}
             </>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchAllStations, fetchLiveStations, distanceMiles, lookupZip } from '../noaa.js'
+import { nmText } from '../tides.js'
 
 /**
  * Search ~3,500 NOAA tide stations by name, state, ID or zip code, or find the nearest.
@@ -54,7 +55,7 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
       const [, where] = await Promise.all([load(), lookupZip(zip)])
       if (id !== lookup.current) return // the search box has moved on
       setOrigin({ lat: where.lat, lng: where.lng })
-      setMessage(`Closest stations to ${where.place} (${zip}):`)
+      setMessage(`Nearest stations to ${where.place} (${zip}):`)
     } catch (e) {
       if (id !== lookup.current) return
       setOrigin(null)
@@ -77,7 +78,7 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
       if (id !== lookup.current) return // the user started typing while we waited
       setQuery('')
       setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-      setMessage('Closest stations to you:')
+      setMessage('Nearest stations to you:')
     } catch (e) {
       if (id !== lookup.current) return
       setMessage(e.code === 1 ? 'Location permission was denied. Search by name instead.' : `Couldn't get your location (${e.message}).`)
@@ -93,7 +94,7 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
           type="search"
           inputMode="search"
           autoFocus
-          placeholder="Zip code, town, or beach"
+          placeholder="Zip code, port or station name"
           value={query}
           onFocus={() => load().catch(() => {})}
           onChange={(e) => {
@@ -107,12 +108,12 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
           }}
           aria-label="Search tide stations"
         />
-        <button type="button" className="secondary" onClick={findNearMe} disabled={busy}>📍 Near me</button>
+        <button type="button" className="secondary" onClick={findNearMe} disabled={busy}>📍 Nearest</button>
       </div>
 
       <label className="check live-filter">
         <input type="checkbox" checked={liveOnly} onChange={(e) => setLiveOnly(e.target.checked)} disabled={!liveIds} />
-        Live gauges only <span className="hint-inline">(measured water, not just a forecast)</span>
+        Tide gauges only <span className="hint-inline">(observed water level, not just predictions)</span>
       </label>
 
       {message && <p className="hint">{message}</p>}
@@ -120,7 +121,7 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
       {!message && showingFavorites && favorites.length === 0 && <p className="hint">Tip: tap ☆ on any result to save it as a favorite.</p>}
       {!stations && q.length >= 2 && !message && <p className="hint">Loading stations…</p>}
       {stations && !showingFavorites && results.length === 0 && !busy && (
-        <p className="hint">No {liveOnly ? 'live-gauge ' : ''}stations match{origin ? ' nearby' : ` “${query}”`}.</p>
+        <p className="hint">No {liveOnly ? 'tide-gauge ' : ''}stations match{origin ? ' nearby' : ` “${query}”`}.</p>
       )}
 
       <ul className="results">
@@ -132,8 +133,8 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
               <button type="button" className="result-main" onClick={() => onPick(s.id)}>
                 <span className="result-name">{s.name}{s.state ? `, ${s.state}` : ''}</span>
                 <span className="result-meta">
-                  {liveIds && <span className={live ? 'kind live' : 'kind'}>{live ? '● Live gauge' : 'Forecast only'}</span>}
-                  <small>{s.miles != null ? `${s.miles.toFixed(1)} mi` : `#${s.id}`}</small>
+                  {liveIds && <span className={live ? 'kind live' : 'kind'}>{live ? '● Tide gauge' : 'Predictions only'}</span>}
+                  <small>{s.miles != null ? nmText(s.miles) : `#${s.id}`}</small>
                 </span>
               </button>
               {onToggleFavorite && (

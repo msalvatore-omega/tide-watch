@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { heightAt, tideNow, seriesAt, offsetAt, stationDate, formatDay, formatCountdown, formatDuration, formatStationTime, tideMood } from '../src/tides.js'
+import { heightAt, tideNow, seriesAt, offsetAt, stationDate, formatDay, formatCountdown, formatDuration, formatStationTime, formatAtStation, tideMood, setClock24, nmText, beaufort, hwlw } from '../src/tides.js'
 import { baltimoreEvents, mockFetch, NOW, EST } from './helpers.js'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -139,10 +139,33 @@ describe('formatting', () => {
     expect(formatStationTime('2026-11-25 19:06', { withDay: false })).toMatch(/^7:06\sPM$/)
     expect(formatStationTime('2026-11-25 19:06')).toMatch(/Wed/)
   })
-  it('mood lines', () => {
-    expect(tideMood({ fraction: 0.05, rising: false })).toMatch(/Low tide/)
-    expect(tideMood({ fraction: 0.95, rising: true })).toMatch(/High tide/)
-    expect(tideMood({ fraction: 0.5, rising: true })).toMatch(/rising/)
-    expect(tideMood({ fraction: 0.5, rising: false })).toMatch(/falling/)
+  it('state-of-tide lines use seamen\'s terms', () => {
+    expect(tideMood({ fraction: 0.05, rising: false })).toMatch(/^Near low water/)
+    expect(tideMood({ fraction: 0.95, rising: true })).toMatch(/^Near high water/)
+    expect(tideMood({ fraction: 0.5, rising: true })).toMatch(/^Flood tide/)
+    expect(tideMood({ fraction: 0.5, rising: false })).toMatch(/^Ebb tide/)
+  })
+  it('24-hour clock: HH:MM everywhere, including bare-hour labels and midnight', () => {
+    setClock24(true)
+    try {
+      expect(formatStationTime('2026-11-25 19:06', { withDay: false })).toBe('19:06')
+      expect(formatStationTime('2026-11-26 02:30')).toMatch(/^Thu,? 02:30$/)
+      expect(formatAtStation(new Date('2026-11-25T23:00:00Z'), EST, { hour: 'numeric' })).toBe('18:00')
+      expect(formatAtStation(new Date('2026-11-25T05:00:00Z'), EST)).toBe('00:00') // midnight is 00:00, never 24:00
+    } finally {
+      setClock24(false)
+    }
+    expect(formatStationTime('2026-11-25 19:06', { withDay: false })).toMatch(/^7:06\sPM$/)
+  })
+  it('nautical units: nautical miles, Beaufort force, HW/LW', () => {
+    expect(nmText(7.6)).toBe('6.6 nm')
+    expect(nmText(1.15078)).toBe('1.0 nm')
+    expect(beaufort(0.5)).toEqual({ force: 0, name: 'Calm' })
+    expect(beaufort(10)).toEqual({ force: 3, name: 'Gentle breeze' })
+    expect(beaufort(11)).toEqual({ force: 4, name: 'Moderate breeze' })
+    expect(beaufort(34)).toEqual({ force: 8, name: 'Gale' })
+    expect(beaufort(70)).toEqual({ force: 12, name: 'Hurricane force' })
+    expect(hwlw({ type: 'H' })).toBe('HW')
+    expect(hwlw({ type: 'L' })).toBe('LW')
   })
 })

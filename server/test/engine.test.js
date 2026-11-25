@@ -121,8 +121,8 @@ test('swings: notifies ~3 hours before each big swing, once', async () => {
   assert.ok(run.sent >= 1)
   const msg = delivered.find((d) => d.tag === `${STATION}:${upcoming.from.time.toISOString()}`)
   assert.ok(msg, 'swing notification uses the same tag as the app')
-  assert.match(msg.title, /^🌊 Big tide swing at Baltimore$/)
-  assert.match(msg.body, /^Water (rises|drops) \d+\.\d ft from \d{1,2}:\d{2} [AP]M to \d{1,2}:\d{2} [AP]M\.$/)
+  assert.match(msg.title, /^🌊 Large tidal range at Baltimore$/)
+  assert.match(msg.body, /^(Rise|Fall) of \d+\.\d ft: (LW|HW) \d{1,2}:\d{2} [AP]M to (HW|LW) \d{1,2}:\d{2} [AP]M\.$/)
   const count = delivered.length
   await engine.check(before + 5 * 60e3)
   assert.equal(delivered.length, count, 'no repeat')

@@ -1,6 +1,6 @@
 import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
-import { tideNow, tideMood, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, ft } from './tides.js'
+import { tideNow, tideMood, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, setClock24, isClock24, ft } from './tides.js'
 import { useSixMinute, useConditions, useNearestLiveGauge, useOnline, liveNow, liveMood, diffText } from './live.js'
 import { isNight, sunTimes, moonPhase } from './astro.js'
 import { useFavorites } from './favorites.js'
@@ -68,6 +68,13 @@ function Tidely() {
   const [now, setNow] = useState(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
   const favs = useFavorites()
+  // 24-hour clock by default, as in tide tables; the choice is remembered.
+  const [clock24, setClock] = useState(isClock24)
+  const toggleClock = () => {
+    setClock24(!clock24)
+    setClock(!clock24)
+    write('tidely.clock', clock24 ? '12' : '24')
+  }
   const online = useOnline()
 
   // Save favorites' predictions in the background so they're available offline.
@@ -138,7 +145,7 @@ function Tidely() {
   const nearestGauge = useNearestLiveGauge(station, noGauge)
   const weatherGauge = hasGauge
     ? { id: stationId, name: null }
-    : nearestGauge ? { id: nearestGauge.id, name: `${nearestGauge.name} (${nearestGauge.miles.toFixed(1)} mi)` } : null
+    : nearestGauge ? { id: nearestGauge.id, name: `${nearestGauge.name} (${nmText(nearestGauge.miles)})` } : null
   const weather = useConditions(weatherGauge?.id ?? null)
 
   const tide = events ? tideNow(events, now) : null
@@ -178,12 +185,12 @@ function Tidely() {
 
   const gaugeNote = live ? null
     : noGauge ? (nearestGauge
-      ? <>No live gauge here · <button type="button" className="link inline" onClick={() => setStationId(nearestGauge.id)}>{nearestGauge.name} has one ({nearestGauge.miles.toFixed(1)} mi)</button></>
-      : 'No live gauge here')
-    : reading ? `${online ? 'Gauge offline' : 'Saved data'} (last reading ${Math.round(reading.ageMs / 3600e3)} h ago)`
-    : !online ? 'Offline: showing the forecast'
-    : six.status === 'error' ? "Couldn't reach the live gauge"
-    : six.status === 'loading' ? 'Checking the live gauge…'
+      ? <>No tide gauge at this station · <button type="button" className="link inline" onClick={() => setStationId(nearestGauge.id)}>{nearestGauge.name} has one ({nmText(nearestGauge.miles)})</button></>
+      : 'No tide gauge at this station')
+    : reading ? `${online ? 'Gauge not reporting' : 'Saved data'} (last observation ${Math.round(reading.ageMs / 3600e3)} h ago)`
+    : !online ? 'Offline: showing predictions'
+    : six.status === 'error' ? 'Tide gauge unreachable'
+    : six.status === 'loading' ? 'Reading the tide gauge…'
     : null
 
   const stationLabel = station ? `${station.name}${station.state ? `, ${station.state}` : ''}` : 'Loading…'
@@ -243,7 +250,7 @@ function Tidely() {
 
       {!online && (
         <div className="notice offline" role="status">
-          📴 <strong>You're offline.</strong> Showing saved tide predictions{error ? '' : ' for this station'}; live readings and weather will return when you reconnect.
+          📴 <strong>You're offline.</strong> Showing saved tide predictions{error ? '' : ' for this station'}; gauge observations and weather will return when you reconnect.
         </div>
       )}
 
@@ -267,13 +274,13 @@ function Tidely() {
         <>
           {floodWarning && (
             <div className={`alert-banner flood ${floodWarning.stage}`} role="alert">
-              <strong>🌊 {floodWarning.now ? `${cap(floodWarning.stage)} flooding now` : `${cap(floodWarning.stage)} flooding possible`}</strong>
+              <strong>🌊 {floodWarning.now ? `${cap(floodWarning.stage)} coastal flooding now` : `${cap(floodWarning.stage)} coastal flooding possible`}</strong>
               <span>
                 {floodWarning.now
-                  ? `Gauge reads ${ft(floodWarning.height)}; flooding starts at ${ft(flood.minor)}.`
+                  ? `Gauge reads ${ft(floodWarning.height)}; minor flood stage is ${ft(flood.minor)}.`
                   : floodWarning.withSurge
-                    ? `High tide ${formatStationTime(floodWarning.event.local)}: forecast ${ft(floodWarning.height)}, about ${ft(floodWarning.withSurge)} if the water stays this far above forecast. Flooding starts at ${ft(flood.minor)}.`
-                    : `High tide ${formatStationTime(floodWarning.event.local)} forecast ${ft(floodWarning.height)}; flooding starts at ${ft(flood.minor)}.`}
+                    ? `High water ${formatStationTime(floodWarning.event.local)}: predicted ${ft(floodWarning.height)}, about ${ft(floodWarning.withSurge)} if the water stays this far above prediction. Minor flood stage is ${ft(flood.minor)}.`
+                    : `High water ${formatStationTime(floodWarning.event.local)} predicted ${ft(floodWarning.height)}; minor flood stage is ${ft(flood.minor)}.`}
               </span>
             </div>
           )}
@@ -284,42 +291,42 @@ function Tidely() {
               fraction={view.fraction}
               rising={view.rising}
               night={hasCoords ? isNight(now, station.lat, station.lng, tide.offsetMs) : tide.stationHour < 6.5 || tide.stationHour >= 18.5}
-              highLabel={`High ${ft(view.max)}`}
-              lowLabel={`Low ${ft(view.min)}`}
+              highLabel={`HW ${ft(view.max)}`}
+              lowLabel={`LW ${ft(view.min)}`}
             />
-            <span className={live ? 'scene-badge live' : 'scene-badge'}>{live ? '● LIVE' : 'Forecast'}</span>
+            <span className={live ? 'scene-badge live' : 'scene-badge'}>{live ? '● OBSERVED' : 'PREDICTED'}</span>
             <p className="mood">{view.mood}</p>
             <p className="sr-only">
-              {live ? 'Measured' : 'Forecast'} water level {ft(view.height)}, {view.rising ? 'rising' : 'falling'}. Next high tide{' '}
-              {formatStationTime(tide.nextHigh.local)} at {ft(tide.nextHigh.height)}. Next low tide {formatStationTime(tide.nextLow.local)} at {ft(tide.nextLow.height)}.
+              {live ? 'Observed' : 'Predicted'} height of tide {ft(view.height)}, {view.rising ? 'flooding' : 'ebbing'}. Next high water{' '}
+              {formatStationTime(tide.nextHigh.local)} at {ft(tide.nextHigh.height)}. Next low water {formatStationTime(tide.nextLow.local)} at {ft(tide.nextLow.height)}.
             </p>
           </section>
 
           <section className="cards">
             <Card
-              label={live ? <>Right now <span className="badge">LIVE</span></> : 'Right now · forecast'}
+              label={live ? <>Height of tide <span className="badge">OBSERVED</span></> : 'Height of tide · predicted'}
               big={ft(view.height)}
               sub={
                 <>
                   {live
-                    ? <>{live.trend === 'rising' ? '⬆️ Rising' : live.trend === 'falling' ? '⬇️ Falling' : live.trend === 'steady' ? '➡️ Steady' : ''}{live.diff != null && <> · {diffText(live.diff)}</>}</>
-                    : view.rising ? '⬆️ Coming in' : '⬇️ Going out'}
+                    ? <>{live.trend === 'rising' ? '⬆️ Flood tide' : live.trend === 'falling' ? '⬇️ Ebb tide' : live.trend === 'steady' ? '➡️ Stand' : ''}{live.diff != null && <> · {diffText(live.diff)}</>}</>
+                    : view.rising ? '⬆️ Flood tide' : '⬇️ Ebb tide'}
                   {(live || gaugeNote) && <br />}
                   <span className="note">
-                    {live ? `Gauge reading at ${formatAtStation(live.time, tide.offsetMs)} (${Math.round(live.ageMs / 60000)} min ago)` : gaugeNote}
+                    {live ? `Gauge observation ${formatAtStation(live.time, tide.offsetMs)} (${Math.round(live.ageMs / 60000)} min ago)` : gaugeNote}
                   </span>
                 </>
               }
               accent="now"
             />
             <Card
-              label="Next high"
+              label="Next high water"
               big={formatStationTime(tide.nextHigh.local)}
               sub={`${ft(tide.nextHigh.height)} · ${formatCountdown(tide.nextHigh.time - now)}`}
               accent="high"
             />
             <Card
-              label="Next low"
+              label="Next low water"
               big={formatStationTime(tide.nextLow.local)}
               sub={`${ft(tide.nextLow.height)} · ${formatCountdown(tide.nextLow.time - now)}`}
               accent="low"
@@ -351,7 +358,7 @@ function Tidely() {
           />
 
           <section className="panel">
-            <h2>{hasGauge ? 'Measured vs forecast' : 'Tide forecast'}</h2>
+            <h2>{hasGauge ? 'Observed vs predicted' : 'Predicted tide'}</h2>
             <TideChart events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
           </section>
 
@@ -376,9 +383,12 @@ function Tidely() {
 
       {tide && (
         <footer>
-          Times local to the station (now {formatAtStation(now, tide.offsetMs)}) · feet above MLLW ·{' '}
+          Station time (now {formatAtStation(now, tide.offsetMs)}) · heights in feet above chart datum (MLLW) ·{' '}
           <a href={`https://tidesandcurrents.noaa.gov/stationhome.html?id=${stationId}`} target="_blank" rel="noreferrer">NOAA data</a>
-          {hasGauge ? ' (gauge readings preliminary, refreshed every 6 min)' : ''} · not for navigation
+          {hasGauge ? ' (gauge observations preliminary, every 6 min)' : ''} · not for navigation ·{' '}
+          <button type="button" className="link inline" onClick={toggleClock} aria-label={`Switch to the ${clock24 ? '12' : '24'}-hour clock`}>
+            {clock24 ? '12-hour clock' : '24-hour clock'}
+          </button>
         </footer>
       )}
     </main>

@@ -17,7 +17,7 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
         <h2>Tide table · 7 days</h2>
         <button type="button" className="link small no-print" onClick={() => window.print()}>🖨️ Print</button>
       </div>
-      <p className="hint print-only">{station?.name}{station?.state ? `, ${station.state}` : ''} · feet above MLLW · station local time</p>
+      <p className="hint print-only">{station?.name}{station?.state ? `, ${station.state}` : ''} · heights in feet above chart datum (MLLW) · station time</p>
       {days.map((day) => {
         const list = events.filter((e) => e.local.startsWith(day))
         const dayOffset = offsetAt(events, Date.parse(`${day}T12:00:00Z`) - offsetMs) // that day's offset (DST-aware)
@@ -39,12 +39,12 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
                   const past = e.time < now
                   return (
                     <tr key={e.local} className={past ? 'past' : ''}>
-                      <td className={e.type === 'H' ? 'hl high' : 'hl low'}>{e.type === 'H' ? '▲ High' : '▼ Low'}</td>
+                      <td className={e.type === 'H' ? 'hl high' : 'hl low'}>{e.type === 'H' ? '▲ HW' : '▼ LW'}</td>
                       <td>{formatStationTime(e.local, { withDay: false })}</td>
                       <td className="num">{ft(e.height)}</td>
                       <td className="flag">
                         {floodStage(e.height, flood) && <span title={`${floodStage(e.height, flood)} flood level`}>🌊</span>}
-                        {bigEnds.has(e.time.getTime()) && <span title="End of a big swing">⚠️</span>}
+                        {bigEnds.has(e.time.getTime()) && <span title="Ends an unusually large range">⚠️</span>}
                       </td>
                     </tr>
                   )
@@ -55,8 +55,8 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
         )
       })}
       <p className="hint">
-        ⚠️ ends a big swing (see alerts on the Now tab).
-        {flood && <> 🌊 forecast to reach flood level ({ft(flood.minor)}).</>} Times are local to the station.
+        HW high water · LW low water · ⚠️ ends an unusually large range (see the Now tab).
+        {flood && <> 🌊 predicted to reach flood stage ({ft(flood.minor)}).</>} Station time.
       </p>
     </section>
   )

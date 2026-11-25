@@ -69,19 +69,44 @@ function parseLocal(s) {
   return new Date(Date.UTC(Y, M - 1, D, h, m))
 }
 
-/** Format a station-local "YYYY-MM-DD HH:MM" string, e.g. "Wed 5:52 PM". */
+// Clock style. Mariners (and tide tables) use the 24-hour clock, which the app turns
+// on at startup; the 12-hour style remains the module default and a user option.
+let clock24 = false
+export const setClock24 = (on) => { clock24 = Boolean(on) }
+export const isClock24 = () => clock24
+// In 24-hour style every time shows as HH:MM (e.g. 19:06), including bare-hour labels.
+const clockOpts = (opts) => (clock24 && 'hour' in opts ? { ...opts, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : opts)
+
+/** Format a station-local "YYYY-MM-DD HH:MM" string, e.g. "Wed 19:06" (or "Wed 7:06 PM"). */
 export function formatStationTime(local, { withDay = true } = {}) {
-  return parseLocal(local).toLocaleString([], {
+  return parseLocal(local).toLocaleString([], clockOpts({
     timeZone: 'UTC',
     ...(withDay ? { weekday: 'short' } : {}),
     hour: 'numeric',
     minute: '2-digit',
-  })
+  }))
+}
+
+/** "HW" / "LW": the usual abbreviations for high and low water. */
+export const hwlw = (e) => (e.type === 'H' ? 'HW' : 'LW')
+
+const MILES_PER_NM = 1.15078
+/** Distance in nautical miles from statute miles, e.g. "6.6 nm". */
+export const nmText = (miles) => `${(miles / MILES_PER_NM).toFixed(1)} nm`
+
+const BEAUFORT = [
+  [1, 'Calm'], [4, 'Light air'], [7, 'Light breeze'], [11, 'Gentle breeze'], [17, 'Moderate breeze'], [22, 'Fresh breeze'],
+  [28, 'Strong breeze'], [34, 'Near gale'], [41, 'Gale'], [48, 'Strong gale'], [56, 'Storm'], [64, 'Violent storm'],
+]
+/** Beaufort wind force from a speed in knots: { force, name }. */
+export function beaufort(knots) {
+  const i = BEAUFORT.findIndex(([limit]) => knots < limit)
+  return i === -1 ? { force: 12, name: 'Hurricane force' } : { force: i, name: BEAUFORT[i][1] }
 }
 
 /** Station wall-clock time for an absolute Date. */
 export function formatAtStation(date, offsetMs, opts = { hour: 'numeric', minute: '2-digit' }) {
-  return new Date(date.getTime() + offsetMs).toLocaleString([], { timeZone: 'UTC', ...opts })
+  return new Date(date.getTime() + offsetMs).toLocaleString([], clockOpts({ timeZone: 'UTC', ...opts }))
 }
 
 export function formatCountdown(ms) {
@@ -94,11 +119,11 @@ export function formatCountdown(ms) {
 
 export const ft = (v) => `${v.toFixed(1)} ft`
 
-/** A fun one-liner for the current state of the tide. */
+/** A one-line seaman's read of the state of the tide. */
 export function tideMood({ fraction, rising }) {
-  if (fraction < 0.15) return 'Low tide: go explore the tide pools! 🐚'
-  if (fraction > 0.85) return 'High tide: the beach is at its smallest. 🏄'
-  return rising ? 'Water is rising. Move your towel! 🏖️' : 'Water is falling. More beach is on the way. 🦀'
+  if (fraction < 0.15) return 'Near low water: least depth this tide. Mind your under-keel clearance. ⚓'
+  if (fraction > 0.85) return 'Near high water: about the most depth you will get this tide. ⚓'
+  return rising ? 'Flood tide making: depths increasing. ⛵' : 'Ebb tide running: depths decreasing. Watch the shoals. ⛵'
 }
 
 /** Linear interpolation in a sorted { time, height } series (e.g. 6-minute data); null outside it. */
