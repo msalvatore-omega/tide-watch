@@ -13,7 +13,7 @@ const DAY = 86400e3
  *   3. monthly records back to the 1900s, then that month's detail for the exact day
  * Returns { time, height, monthOnly? } or null if never (since records began).
  */
-export async function lastBeyond(stationId, level, dir, { before, observed = [] }) {
+export async function lastBeyond(stationId, level, dir, { before, observed = [], offsetMs = 0 }) {
   const hit = (v) => (dir === 'high' ? v >= level : v <= level)
 
   for (let i = observed.length - 1; i >= 0; i--) {
@@ -25,7 +25,7 @@ export async function lastBeyond(stationId, level, dir, { before, observed = [] 
   const lastVerified = months.at(-1)
   const gapStart = lastVerified ? new Date(Date.UTC(lastVerified.y, lastVerified.m, 1)) : new Date(before.getTime() - 60 * DAY)
   if (gapStart < before) {
-    const days = await fetchRecentDaily(stationId, gapStart)
+    const days = await fetchRecentDaily(stationId, gapStart, offsetMs)
     for (let i = days.length - 1; i >= 0; i--) {
       const d = days[i]
       const time = dir === 'high' ? d.maxTime : d.minTime
@@ -51,6 +51,7 @@ export async function records(stationId) {
   if (!months.length) return null
   const withHi = months.filter((m) => m.hi != null)
   const withLo = months.filter((m) => m.lo != null)
+  if (!withHi.length || !withLo.length) return null
   const top = withHi.reduce((a, b) => (b.hi > a.hi ? b : a))
   const bottom = withLo.reduce((a, b) => (b.lo < a.lo ? b : a))
   const pin = async (m, dir) => {
@@ -68,7 +69,7 @@ export async function records(stationId) {
  * Facts for the Now view. Only for stations with a gauge (history needs measurements).
  * Recomputes when the station changes or the level moves by 0.1 ft.
  */
-export function useHistoryFacts({ stationId, enabled, level, observed, flood, todayStart }) {
+export function useHistoryFacts({ stationId, enabled, level, observed, flood, todayStart, offsetMs = 0 }) {
   const [state, setState] = useState({ status: 'idle' })
   const observedRef = useRef(observed)
   observedRef.current = observed
@@ -85,7 +86,7 @@ export function useHistoryFacts({ stationId, enabled, level, observed, flood, to
       const mean = datums?.msl ?? null
       const dir = mean != null && rounded < mean ? 'low' : 'high'
       const before = new Date(todayKey)
-      const opts = { before, observed: observedRef.current ?? [] }
+      const opts = { before, observed: observedRef.current ?? [], offsetMs }
       const [current, lastFlood, rec] = await Promise.all([
         lastBeyond(stationId, rounded, dir, opts),
         minor != null ? lastBeyond(stationId, minor, 'high', opts) : null,
@@ -94,7 +95,7 @@ export function useHistoryFacts({ stationId, enabled, level, observed, flood, to
       if (!cancelled) setState({ status: 'ok', stationId, data: { level: rounded, dir, current, lastFlood, records: rec, mean } })
     })().catch((e) => !cancelled && setState({ status: 'error', stationId, message: e.message }))
     return () => { cancelled = true }
-  }, [stationId, enabled, rounded, todayKey, minor])
+  }, [stationId, enabled, rounded, todayKey, minor, offsetMs])
 
   return state.stationId === stationId ? state : { status: enabled ? 'loading' : 'idle' }
 }

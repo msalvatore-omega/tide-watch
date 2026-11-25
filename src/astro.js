@@ -10,8 +10,8 @@ const fromJulian = (j) => new Date((j - 2440587.5) * DAY_MS)
 
 /**
  * Sunrise and sunset for the station-local calendar day containing `date`.
- * offsetMs = station's UTC offset (from the tide data). Returns Dates, or null
- * fields for polar day/night.
+ * offsetMs = station's UTC offset (from the tide data). Returns Dates; in polar
+ * day/night sunrise and sunset are null and `polar` says which ('day' | 'night').
  */
 export function sunTimes(date, lat, lng, offsetMs) {
   const local = new Date(date.getTime() + offsetMs)
@@ -25,15 +25,22 @@ export function sunTimes(date, lat, lng, offsetMs) {
   const sinDec = Math.sin(lambda * rad) * Math.sin(23.4397 * rad)
   const cosDec = Math.cos(Math.asin(sinDec))
   const cosH = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * sinDec) / (Math.cos(lat * rad) * cosDec)
-  if (cosH > 1 || cosH < -1) return { sunrise: null, sunset: null, noon: fromJulian(jTransit) }
+  // cosH > 1: the sun never rises that day (polar night); cosH < -1: it never sets.
+  if (cosH > 1 || cosH < -1) return { sunrise: null, sunset: null, noon: fromJulian(jTransit), polar: cosH > 1 ? 'night' : 'day' }
   const H = Math.acos(cosH) / rad
   return { sunrise: fromJulian(jTransit - H / 360), sunset: fromJulian(jTransit + H / 360), noon: fromJulian(jTransit) }
 }
 
 export function isNight(date, lat, lng, offsetMs) {
-  const { sunrise, sunset } = sunTimes(date, lat, lng, offsetMs)
-  if (!sunrise) return false
-  return date < sunrise || date > sunset
+  const { sunrise, sunset, polar } = sunTimes(date, lat, lng, offsetMs)
+  if (polar) return polar === 'night'
+  if (date > sunset) return true
+  if (date >= sunrise) return false
+  // Before today's sunrise: still daylight if yesterday's sun hasn't set yet
+  // (high latitudes in summer, where sunset falls after local midnight).
+  const y = sunTimes(new Date(date.getTime() - DAY_MS), lat, lng, offsetMs)
+  if (y.polar) return y.polar === 'night'
+  return date > y.sunset
 }
 
 const SYNODIC = 29.530588853

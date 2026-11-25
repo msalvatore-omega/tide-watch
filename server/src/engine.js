@@ -174,7 +174,9 @@ export class Engine {
           try {
             reading = liveNow(await fetchLive(stationId), nowDate)
           } catch (e) {
-            if (!e.noData) throw e // no gauge at this station: surge checks simply don't apply
+            // No gauge here, or NOAA's gauge feed is down: skip surge checks this run,
+            // but still send swing alerts (they only need the cached predictions).
+            if (!e.noData) { summary.errors++; this.log(`station ${stationId} gauge: ${e.message}`) }
           }
         }
         for (const row of stationSubs) {

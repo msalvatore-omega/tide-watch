@@ -29,7 +29,7 @@ export function tideNow(events, now = new Date()) {
   const fraction = max === min ? 0.5 : (height - min) / (max - min)
 
   // Station's UTC offset, derived from the paired GMT/local timestamps.
-  const offsetMs = parseLocal(prev.local) - prev.time
+  const offsetMs = offsetAt(events, now)
   const stationClock = new Date(now.getTime() + offsetMs)
 
   return {
@@ -44,6 +44,21 @@ export function tideNow(events, now = new Date()) {
     stationHour: stationClock.getUTCHours() + stationClock.getUTCMinutes() / 60,
     offsetMs,
   }
+}
+
+/**
+ * The station's UTC offset (ms) at time t, read from the nearest high/low tide's
+ * paired GMT/local times. Following the nearest tide (rather than one fixed value)
+ * keeps times right across daylight-saving changes within the loaded month.
+ */
+export function offsetAt(events, t) {
+  const ms = t instanceof Date ? t.getTime() : t
+  let best = events[0]
+  for (const e of events) {
+    if (Math.abs(e.time - ms) < Math.abs(best.time - ms)) best = e
+    else if (e.time > ms) break
+  }
+  return parseLocal(best.local) - best.time
 }
 
 // "YYYY-MM-DD HH:MM" → Date whose UTC fields equal the station's wall-clock time.

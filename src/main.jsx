@@ -9,6 +9,24 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
+// Service worker: offline support and notifications (see public/sw.js).
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}))
+  const firstVisit = !navigator.serviceWorker.controller
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('./sw.js')
+      const reg = await navigator.serviceWorker.ready
+      const loaded = performance.getEntriesByType('resource').map((e) => e.name)
+      // Tell it which files this page loaded, so even a first visit works offline next time.
+      reg.active?.postMessage({ type: 'precache', urls: [location.href, ...loaded].filter((u) => u.startsWith(location.origin)) })
+      // On a first visit the tide data arrived before the service worker was in control,
+      // so it wasn't saved. Ask for the small requests again; this time they're kept.
+      if (firstVisit) {
+        await new Promise((r) => setTimeout(r, 3000))
+        const requested = performance.getEntriesByType('resource').map((e) => e.name) // by now the data has loaded
+        const again = [...new Set(requested)].filter((u) => u.includes('tidesandcurrents.noaa.gov') && !/monthly_mean|range=744&.*water_level|water_level.*range=744/.test(u))
+        for (const u of again) await fetch(u).catch(() => {})
+      }
+    } catch { /* offline support is optional */ }
+  })
 }

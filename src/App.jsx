@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
 import { tideNow, tideMood, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, ft } from './tides.js'
-import { useSixMinute, useConditions, useNearestLiveGauge, liveNow, liveMood, diffText } from './live.js'
+import { useSixMinute, useConditions, useNearestLiveGauge, useOnline, liveNow, liveMood, diffText } from './live.js'
 import { isNight, sunTimes, moonPhase } from './astro.js'
 import { useFavorites } from './favorites.js'
 import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
@@ -26,17 +26,56 @@ const TABS = [
 const read = (key) => { try { return localStorage.getItem(key) } catch { return null } }
 const write = (key, v) => { try { localStorage.setItem(key, v) } catch { /* ignore */ } }
 
+/** If something unexpected breaks, show a way back instead of a blank page. */
+class ErrorBoundary extends Component {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() {
+    if (!this.state.failed) return this.props.children
+    const home = () => { location.href = location.pathname }
+    return (
+      <main>
+        <h1>🌊 Tidely</h1>
+        <div className="error" role="alert">
+          Something went wrong showing this page.
+          <button className="link" onClick={home}>Start over</button>
+        </div>
+      </main>
+    )
+  }
+}
+
 export default function App() {
+  return <ErrorBoundary><Tidely /></ErrorBoundary>
+}
+
+function Tidely() {
   const params = new URLSearchParams(location.search)
   const [stationId, setStationId] = useState(() => params.get('station') || read(STORAGE_KEY) || DEFAULT_STATION)
   const [tab, setTab] = useState(() => (TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') : 'now'))
-  const [station, setStation] = useState(null)
-  const [events, setEvents] = useState(null)
+  // Loaded data is tagged with its station, so nothing from the previous station is
+  // ever shown (or favorited) after switching.
+  const [stationState, setStation] = useState(null)
+  const [eventsState, setEvents] = useState(null)
+  const station = stationState?.id === stationId ? stationState : null
+  const events = eventsState?.stationId === stationId ? eventsState.events : null
+  const lastRefetch = useRef(0)
   const [error, setError] = useState('')
   const [picking, setPicking] = useState(false)
   const [now, setNow] = useState(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
   const favs = useFavorites()
+  const online = useOnline()
+
+  // Save favorites' predictions in the background so they're available offline.
+  const favoriteIds = favs.favorites.map((f) => f.id).join(',')
+  useEffect(() => {
+    if (!online || !favoriteIds) return
+    const timer = setTimeout(() => {
+      for (const id of favoriteIds.split(',')) if (id !== stationId) fetchHiLo(id).catch(() => {})
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [favoriteIds, online]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tick the clock every 30s so the picture and countdowns stay live.
   useEffect(() => {
@@ -50,17 +89,19 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
     setError('')
-    setEvents(null)
-    Promise.all([fetchHiLo(stationId), fetchStationInfo(stationId).catch(() => ({ id: stationId, name: `Station ${stationId}` }))])
+    // If the station's details can't be loaded (e.g. offline), fall back to the favorite's saved name.
+    const saved = favs.favorites.find((f) => f.id === stationId)
+    const fallback = { id: stationId, name: saved?.name ?? `Station ${stationId}`, state: saved?.state }
+    Promise.all([fetchHiLo(stationId), fetchStationInfo(stationId).catch(() => fallback)])
       .then(([ev, info]) => {
         if (cancelled) return
-        setEvents(ev)
-        setStation(info)
+        setEvents({ stationId, events: ev })
+        setStation({ ...info, id: stationId })
         write(STORAGE_KEY, stationId)
       })
       .catch((e) => !cancelled && setError(e.message))
     return () => { cancelled = true }
-  }, [stationId, reloadKey])
+  }, [stationId, reloadKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shareable URL: ?station=…&tab=…
   useEffect(() => {
@@ -72,10 +113,14 @@ export default function App() {
     history.replaceState(null, '', url)
   }, [stationId, tab])
 
-  // Refetch once we're within a day of the end of the loaded predictions.
+  // Refetch once we're within a day of the end of the loaded predictions: at most once
+  // an hour and only when online, so stale saved data can't cause a reload loop.
   useEffect(() => {
-    if (events && now > events.at(-1).time - 24 * 3600e3) setReloadKey((k) => k + 1)
-  }, [now, events])
+    if (!events || !online || now <= events.at(-1).time - 24 * 3600e3) return
+    if (Date.now() - lastRefetch.current < 3600e3) return
+    lastRefetch.current = Date.now()
+    setReloadKey((k) => k + 1)
+  }, [now, events, online])
 
   const swing = useSwingAlerts(events, now)
   const { surgeFeet } = swing.settings
@@ -96,7 +141,7 @@ export default function App() {
   const tide = events ? tideNow(events, now) : null
   const flood = useFloodLevels(stationId)
   const todayStart = tide ? new Date(Date.parse(`${stationDate(now, tide.offsetMs)}T00:00:00Z`) - tide.offsetMs) : null
-  const historyFacts = useHistoryFacts({ stationId, enabled: Boolean(live), level: live?.height, observed: sixData?.observed, flood, todayStart })
+  const historyFacts = useHistoryFacts({ stationId, enabled: Boolean(live), level: live?.height, observed: sixData?.observed, flood, todayStart, offsetMs: tide?.offsetMs })
 
   // Flood warning: water at flood level now, or a high tide in the next 24 hours forecast
   // to reach it (adding today's surge if the gauge is running above the forecast).
@@ -132,7 +177,8 @@ export default function App() {
     : noGauge ? (nearestGauge
       ? <>No live gauge here · <button type="button" className="link inline" onClick={() => setStationId(nearestGauge.id)}>{nearestGauge.name} has one ({nearestGauge.miles.toFixed(1)} mi)</button></>
       : 'No live gauge here')
-    : reading ? `Gauge offline (last reading ${Math.round(reading.ageMs / 3600e3)} h ago)`
+    : reading ? `${online ? 'Gauge offline' : 'Saved data'} (last reading ${Math.round(reading.ageMs / 3600e3)} h ago)`
+    : !online ? 'Offline: showing the forecast'
     : six.status === 'error' ? "Couldn't reach the live gauge"
     : six.status === 'loading' ? 'Checking the live gauge…'
     : null
@@ -192,14 +238,26 @@ export default function App() {
         ))}
       </div>
 
+      {!online && (
+        <div className="notice offline" role="status">
+          📴 <strong>You're offline.</strong> Showing saved tide predictions{error ? '' : ' for this station'}; live readings and weather will return when you reconnect.
+        </div>
+      )}
+
       {error && (
         <div className="error" role="alert">
-          Couldn't load tides: {error}
+          {online ? `Couldn't load tides: ${error}` : 'This station isn\'t saved for offline use. Open it once while connected (or add it to favorites) to save it.'}
           <button className="link" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
         </div>
       )}
 
-      {!error && !tide && <div className="skeleton" aria-busy="true">Checking the tides…</div>}
+      {!error && events && !tide && (
+        <div className="error" role="alert">
+          The saved tide predictions for this station have run out. {online ? '' : 'Reconnect to load new ones.'}
+          {online && <button className="link" onClick={() => setReloadKey((k) => k + 1)}>Reload</button>}
+        </div>
+      )}
+      {!error && !events && <div className="skeleton" aria-busy="true">Checking the tides…</div>}
 
       {tide && view && tab === 'now' && (
         <>
@@ -262,6 +320,7 @@ export default function App() {
 
           <Conditions
             weather={weather.status === 'ok' ? weather.data : null}
+            now={now}
             source={weatherGauge?.name}
             sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
             moon={moonPhase(now)}
@@ -270,7 +329,7 @@ export default function App() {
 
           <section className="panel">
             <h2>{hasGauge ? 'Measured vs forecast' : 'Tide forecast'}</h2>
-            <TideChart events={events} now={now} offsetMs={tide.offsetMs} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
+            <TideChart events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
           </section>
 
           {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
@@ -288,7 +347,7 @@ export default function App() {
       )}
 
       {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} flood={flood} />}
-      {tide && tab === 'plan' && <Planner events={events} now={now} offsetMs={tide.offsetMs} station={station} live={live} />}
+      {tide && tab === 'plan' && <Planner events={events} now={now} station={station} live={live} />}
 
       {tide && (
         <footer>

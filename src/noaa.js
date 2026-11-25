@@ -45,24 +45,33 @@ export async function fetchHiLo(stationId) {
   ])
   if (!gmt.predictions?.length) throw new Error('No tide predictions for this station.')
 
-  // NOAA reads begin_date in the requested time zone, so the two lists start at
-  // different instants. Pair each GMT event with the local one for the same tide:
-  // same type and predicted height, with clock times less than a day apart.
+  // NOAA reads begin_date in the requested time zone, so the two lists are the same
+  // sequence of tides starting at different instants: one is the other shifted by a
+  // few positions. Find that shift (the one where types and heights line up for the
+  // most tides) and pair by position. Matching each tide on height alone is not safe:
+  // two consecutive highs can have identical predicted heights.
   const toUTC = (t) => new Date(t.replace(' ', 'T') + ':00Z')
-  const localEvents = (local.predictions ?? []).map((p) => ({ ...p, asUTC: toUTC(p.t) }))
+  const g = gmt.predictions
+  const l = local.predictions ?? []
+  const same = (a, b) => a && b && a.type === b.type && a.v === b.v
+  let shift = 0
+  let best = -1
+  for (let k = -8; k <= 8; k++) {
+    let hits = 0
+    for (let i = 0; i < g.length; i++) if (same(g[i], l[i + k])) hits++
+    if (hits > best) { best = hits; shift = k }
+  }
 
-  return gmt.predictions
-    .map((p) => {
-      const time = toUTC(p.t)
-      const match = localEvents.find((l) => l.type === p.type && l.v === p.v && Math.abs(l.asUTC - time) < 24 * 3600e3)
-      return match && {
-        time,
-        local: match.t, // "YYYY-MM-DD HH:MM" at the station
-        height: Number(p.v),
-        type: p.type, // "H" or "L"
-      }
+  const events = g
+    .map((p, i) => same(p, l[i + shift]) && {
+      time: toUTC(p.t),
+      local: l[i + shift].t, // "YYYY-MM-DD HH:MM" at the station
+      height: Number(p.v),
+      type: p.type, // "H" or "L"
     })
     .filter(Boolean)
+  if (!events.length) throw new Error('No tide predictions for this station.')
+  return events
 }
 
 export async function fetchStationInfo(stationId) {
@@ -213,10 +222,15 @@ const cache = {
     try { localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), value })) } catch { /* quota/private mode */ }
   },
 }
+// In-memory request memo. Entries expire so a tab left open for days picks up new data.
+const HOUR = 3600e3
 const memo = new Map()
-const once = (key, fn) => {
-  if (!memo.has(key)) memo.set(key, fn().catch((e) => { memo.delete(key); throw e }))
-  return memo.get(key)
+const once = (key, fn, maxAgeMs = 24 * HOUR) => {
+  const hit = memo.get(key)
+  if (hit && Date.now() - hit.at < maxAgeMs) return hit.promise
+  const promise = fn().catch((e) => { memo.delete(key); throw e })
+  memo.set(key, { at: Date.now(), promise })
+  return promise
 }
 
 /** Tidal datums converted to feet above MLLW (the app's zero). */
@@ -295,11 +309,12 @@ export const fetchMonthDetail = (stationId, y, m) =>
 /**
  * Daily highest/lowest measured water from `from` up to today, for the weeks NOAA
  * hasn't verified yet. Fetched as 6-minute data in ≤31-day chunks, reduced to one
- * max/min per day, and cached on the device for 6 hours.
+ * max/min per station-local day (so "before today" never splits a day), and cached
+ * on the device for 6 hours.
  */
-export const fetchRecentDaily = (stationId, from) =>
-  once(`recent:${stationId}:${ymdUTC(from)}`, async () => {
-    const key = `tidely.recent.${stationId}.${ymdUTC(from)}.v1`
+export const fetchRecentDaily = (stationId, from, offsetMs = 0) =>
+  once(`recent:${stationId}:${ymdUTC(from)}:${offsetMs}`, async () => {
+    const key = `tidely.recent.${stationId}.${ymdUTC(from)}.${offsetMs}.v2`
     const hit = cache.get(key, 6 * 3600e3)
     if (hit) return hit.map((d) => ({ ...d, maxTime: new Date(d.maxTime), minTime: new Date(d.minTime) }))
     const days = new Map()
@@ -311,7 +326,7 @@ export const fetchRecentDaily = (stationId, from) =>
       for (const r of json.data ?? []) {
         const v = num(r.v)
         if (v == null) continue
-        const day = r.t.slice(0, 10)
+        const day = new Date(toTime(r.t).getTime() + offsetMs).toISOString().slice(0, 10)
         const d = days.get(day)
         if (!d) days.set(day, { day, max: v, maxTime: toTime(r.t), min: v, minTime: toTime(r.t) })
         else {
@@ -323,4 +338,4 @@ export const fetchRecentDaily = (stationId, from) =>
     const list = [...days.values()].sort((a, b) => (a.day < b.day ? -1 : 1))
     cache.set(key, list)
     return list
-  })
+  }, 6 * HOUR)

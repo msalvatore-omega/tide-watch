@@ -28,10 +28,21 @@ describe('sunrise and sunset', () => {
     near(localHM(sydney.sunrise, 11 * 3600e3), '05:41', 5)
     near(localHM(sydney.sunset, 11 * 3600e3), '20:05', 5)
   })
-  it('polar night returns no sunrise instead of NaN', () => {
-    const tromso = sunTimes(new Date('2026-12-21T12:00:00Z'), 69.65, 18.96, 3600e3)
-    expect(tromso.sunrise).toBeNull()
-    expect(isNight(new Date('2026-12-21T12:00:00Z'), 69.65, 18.96, 3600e3)).toBe(false)
+  it('polar night is night all day; midnight sun is day all night', () => {
+    const winter = sunTimes(new Date('2026-12-21T12:00:00Z'), 69.65, 18.96, 3600e3) // Tromsø
+    expect(winter.sunrise).toBeNull()
+    expect(winter.polar).toBe('night')
+    expect(isNight(new Date('2026-12-21T12:00:00Z'), 69.65, 18.96, 3600e3)).toBe(true)
+    const summer = sunTimes(new Date('2026-06-21T23:00:00Z'), 69.65, 18.96, 2 * 3600e3)
+    expect(summer.polar).toBe('day')
+    expect(isNight(new Date('2026-06-21T23:00:00Z'), 69.65, 18.96, 2 * 3600e3)).toBe(false)
+  })
+  it('a sunset after local midnight still counts as daylight until it sets (Nome, June)', () => {
+    const AKDT = -8 * 3600e3
+    const t = (hm) => new Date(`2026-06-21T${hm}:00Z`) // 08:30Z = 12:30 AM local, 12:00Z = 4:00 AM local
+    expect(isNight(t('08:30'), 64.5, -165.4, AKDT)).toBe(false) // sun sets around 1:45 AM
+    expect(isNight(t('11:00'), 64.5, -165.4, AKDT)).toBe(true) // 3 AM: between sunset and the ~4:20 AM sunrise
+    expect(isNight(t('14:00'), 64.5, -165.4, AKDT)).toBe(false) // 6 AM
   })
   it('isNight flips at sunset', () => {
     expect(isNight(new Date('2026-11-25T20:00:00Z'), BALTIMORE.lat, BALTIMORE.lng, EST)).toBe(false) // 3 PM

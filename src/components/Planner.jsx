@@ -1,7 +1,7 @@
 // Plan tab: "When is the water above/below X ft?" over the next 7 days.
 import { useState } from 'react'
-import { heightAt, stationDate, formatDay, formatAtStation, formatDuration, ft } from '../tides.js'
-import { sunTimes } from '../astro.js'
+import { heightAt, offsetAt, stationDate, formatDay, formatAtStation, formatDuration, ft } from '../tides.js'
+import { isNight } from '../astro.js'
 import { diffText } from '../surge.js'
 
 const KEY = 'tidely.planner.v1'
@@ -33,18 +33,8 @@ export function findWindows(events, from, to, dir, feet, allowed = () => true) {
   return windows
 }
 
-/** Is `t` between sunrise and sunset at the station? (cached per day) */
-function daylightTest(station, offsetMs) {
-  const cache = new Map()
-  return (t) => {
-    const day = stationDate(new Date(t), offsetMs)
-    if (!cache.has(day)) cache.set(day, sunTimes(new Date(Date.parse(`${day}T12:00:00Z`) - offsetMs), station.lat, station.lng, offsetMs))
-    const { sunrise, sunset } = cache.get(day)
-    return sunrise ? t >= sunrise.getTime() && t <= sunset.getTime() : true
-  }
-}
-
-export default function Planner({ events, now, offsetMs, station, live }) {
+export default function Planner({ events, now, station, live }) {
+  const off = (t) => offsetAt(events, t) // station offset at that moment (follows DST)
   const upcoming = events.filter((e) => e.time > now && e.time - now < 7 * 86400e3)
   const lowest = Math.min(...upcoming.map((e) => e.height))
   const highest = Math.max(...upcoming.map((e) => e.height))
@@ -54,9 +44,13 @@ export default function Planner({ events, now, offsetMs, station, live }) {
   const update = (o) => { const next = { ...opts, ...o }; setOpts(next); save(next) }
 
   const end = new Date(now.getTime() + 7 * 86400e3)
-  const allowed = opts.daylight && station?.lat != null ? daylightTest(station, offsetMs) : undefined
+  const allowed = opts.daylight && station?.lat != null ? (t) => !isNight(new Date(t), station.lat, station.lng, off(t)) : undefined
   const windows = findWindows(events, now, end, opts.dir, opts.feet, allowed)
-  const byDay = Map.groupBy(windows, (w) => stationDate(new Date(w.start), offsetMs))
+  const byDay = new Map() // (Map.groupBy isn't available on older iPhones)
+  for (const w of windows) {
+    const day = stationDate(new Date(w.start), off(w.start))
+    byDay.set(day, [...(byDay.get(day) ?? []), w])
+  }
   const totalMs = windows.reduce((n, w) => n + (w.end - w.start), 0)
 
   return (
@@ -109,7 +103,7 @@ export default function Planner({ events, now, offsetMs, station, live }) {
               {list.map((w) => (
                 <li key={w.start}>
                   <span className="when">
-                    {w.start <= now.getTime() ? 'Now' : formatAtStation(new Date(w.start), offsetMs)} – {formatAtStation(new Date(w.end), offsetMs)}
+                    {w.start <= now.getTime() ? 'Now' : formatAtStation(new Date(w.start), off(w.start))} – {formatAtStation(new Date(w.end), off(w.end))}
                   </span>
                   <span className="dur">{formatDuration(w.end - w.start)}</span>
                   <span className="peak">{opts.dir === 'above' ? 'peak' : 'lowest'} {ft(w.peak)}</span>

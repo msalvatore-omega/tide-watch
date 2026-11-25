@@ -57,6 +57,16 @@ describe('"last time the water was this high / low"', () => {
     const low = await lastBeyond('8574680', -0.5, 'low', { before: TODAY, observed: [] })
     expect(iso(low)).toBe('2026-11-10T20:00')
   })
+  it('days are the station\'s own days: yesterday evening is found even when today is higher', async () => {
+    // 2026-11-25 02:00Z is 9 PM on the 24th in Baltimore (yesterday); 15:00Z is 10 AM today.
+    RECENT.push({ t: '2026-11-25 02:00', v: '3.00' }, { t: '2026-11-25 15:00', v: '3.40' })
+    try {
+      const r = await lastBeyond('8574680', 2.9, 'high', { before: TODAY, observed: [], offsetMs: -5 * 3600e3 })
+      expect(iso(r)).toBe('2026-11-25T02:00')
+    } finally {
+      RECENT.splice(-2)
+    }
+  })
   it('3. then the monthly records, pinning the exact tide within the month', async () => {
     const r = await lastBeyond('8574680', 3.36, 'high', { before: TODAY, observed: [] })
     expect(iso(r)).toBe('2025-10-31T05:54') // the later of the two qualifying highs that month

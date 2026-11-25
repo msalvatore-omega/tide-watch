@@ -32,6 +32,9 @@ Three tabs:
 **🧭 Plan**: when is the water above/below a height you choose over the next 7 days
 (e.g. to launch a boat or walk the flats), optionally daylight only.
 
+**Offline**: the app and the tide data for stations you've viewed (plus favorites) are
+saved on the device, so predictions, the Week table and the Planner work with no signal.
+
 Also: search by zip code, name or "📍 Near me"; ★ favorite stations; installable to a
 phone's home screen; dark mode; shareable links (`?station=8574680&tab=week`).
 
@@ -47,7 +50,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 37 unit tests: tide math, alerts, surge, sun/moon, planner, history
+npm test        # 42 unit tests: tide math, alerts, surge, sun/moon, planner, history
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.

@@ -16,9 +16,14 @@ function Cell({ icon, label, value, sub }) {
   )
 }
 
-export default function Conditions({ weather, source, sun, moon, offsetMs }) {
-  const w = weather?.wind
-  const p = weather?.pressure
+const MAX_AGE_MS = 3 * 3600e3 // don't show old readings (e.g. saved data while offline) as current
+
+export default function Conditions({ weather, source, sun, moon, offsetMs, now }) {
+  const fresh = (x) => (x && (!now || !x.time || now - x.time < MAX_AGE_MS) ? x : null)
+  const w = fresh(weather?.wind)
+  const p = fresh(weather?.pressure)
+  const waterTemp = fresh(weather?.waterTemp)
+  const airTemp = fresh(weather?.airTemp)
   const trend = p?.change3h == null ? '' : p.change3h > 1 ? ' ↑ rising' : p.change3h < -1 ? ' ↓ falling' : ' → steady'
   const time = (d) => (d ? formatAtStation(d, offsetMs) : '—')
 
@@ -33,11 +38,11 @@ export default function Conditions({ weather, source, sun, moon, offsetMs }) {
             sub={`${Math.round(w.knots)} kt${w.gust != null ? ` · gust ${Math.round(w.gust * MPH_PER_KNOT)}` : ''}`}
           />
         )}
-        {(weather?.waterTemp || weather?.airTemp) && (
+        {(waterTemp || airTemp) && (
           <Cell
             icon="🌡️"
             label="Water · Air"
-            value={`${weather.waterTemp ? `${Math.round(weather.waterTemp.f)}°F` : '—'} · ${weather.airTemp ? `${Math.round(weather.airTemp.f)}°F` : '—'}`}
+            value={`${waterTemp ? `${Math.round(waterTemp.f)}°F` : '—'} · ${airTemp ? `${Math.round(airTemp.f)}°F` : '—'}`}
           />
         )}
         {p && <Cell icon="⏲️" label="Pressure" value={`${Math.round(p.mb)} mb`} sub={trend.trim() || null} />}
@@ -50,7 +55,7 @@ export default function Conditions({ weather, source, sun, moon, offsetMs }) {
           />
         )}
       </div>
-      {source && <p className="cond-source">Weather from the {source} gauge</p>}
+      {source && (w || p || waterTemp || airTemp) && <p className="cond-source">Weather from the {source} gauge</p>}
     </section>
   )
 }

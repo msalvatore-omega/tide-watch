@@ -1,12 +1,13 @@
 // Week tab: every high and low for 7 days, with sun and moon. Printable.
-import { formatStationTime, formatAtStation, stationDate, formatDay, ft } from '../tides.js'
+import { formatStationTime, formatAtStation, offsetAt, stationDate, formatDay, ft } from '../tides.js'
 import { sunTimes, moonPhase } from '../astro.js'
 import { floodStage } from '../history.js'
 
 export default function WeekTable({ events, now, offsetMs, station, alerts, flood }) {
   const today = stationDate(now, offsetMs)
+  // Seven calendar days from today (calendar arithmetic, so a clock change can't skip or repeat a day).
   const days = []
-  for (let i = 0; i < 7; i++) days.push(stationDate(new Date(now.getTime() + i * 86400e3), offsetMs))
+  for (let i = 0; i < 7; i++) days.push(new Date(Date.parse(`${today}T12:00:00Z`) + i * 86400e3).toISOString().slice(0, 10))
   // Mark highs/lows that end a big swing.
   const bigEnds = new Set((alerts ?? []).map((a) => a.to.time.getTime()))
 
@@ -19,15 +20,16 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
       <p className="hint print-only">{station?.name}{station?.state ? `, ${station.state}` : ''} · feet above MLLW · station local time</p>
       {days.map((day) => {
         const list = events.filter((e) => e.local.startsWith(day))
-        const noonUtc = new Date(Date.parse(`${day}T12:00:00Z`) - offsetMs)
-        const sun = station?.lat != null ? sunTimes(noonUtc, station.lat, station.lng, offsetMs) : null
+        const dayOffset = offsetAt(events, Date.parse(`${day}T12:00:00Z`) - offsetMs) // that day's offset (DST-aware)
+        const noonUtc = new Date(Date.parse(`${day}T12:00:00Z`) - dayOffset)
+        const sun = station?.lat != null ? sunTimes(noonUtc, station.lat, station.lng, dayOffset) : null
         const moon = moonPhase(noonUtc)
         return (
           <div key={day} className={day === today ? 'day today' : 'day'}>
             <div className="day-head">
               <strong>{formatDay(day)}{day === today ? ' · Today' : ''}</strong>
               <span className="day-astro">
-                {sun?.sunrise && <>🌅 {formatAtStation(sun.sunrise, offsetMs)} · 🌇 {formatAtStation(sun.sunset, offsetMs)} · </>}
+                {sun?.sunrise && <>🌅 {formatAtStation(sun.sunrise, dayOffset)} · 🌇 {formatAtStation(sun.sunset, dayOffset)} · </>}
                 <span title={moon.name}>{moon.emoji}</span>
               </span>
             </div>

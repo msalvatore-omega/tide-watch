@@ -491,3 +491,5 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 .facts li { line-height: 1.4; font-size: 0.93rem; }
 .fact-label { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .small-print { font-size: 0.75rem; margin-top: 6px; }
+.notice.offline { display: block; background: #fff4d6; color: #6b4a00; border-color: #f2d27a; font-size: 0.9rem; }
+@media (prefers-color-scheme: dark) { .notice.offline { background: #3a2f12; color: #ffe4a1; border-color: #6b5520; } }

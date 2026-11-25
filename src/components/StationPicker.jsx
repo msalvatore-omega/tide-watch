@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchAllStations, fetchLiveStations, distanceMiles, lookupZip } from '../noaa.js'
 
 /**
@@ -14,6 +14,7 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
   const [message, setMessage] = useState('')
   const [origin, setOrigin] = useState(null) // { lat, lng } for "nearest" lists
   const [liveOnly, setLiveOnly] = useState(false)
+  const lookup = useRef(0) // id of the newest zip / near-me lookup; older ones are ignored when they finish
 
   // Which stations have a live gauge (~300); cached for a week.
   useEffect(() => {
@@ -42,26 +43,30 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
     }
     if (q.length < 2) return favorites.filter(keep)
     if (!stations) return []
-    return stations.filter((s) => keep(s) && (s.id.includes(q) || `${s.name} ${s.state}`.toLowerCase().includes(q))).slice(0, 12)
+    return stations.filter((s) => keep(s) && (s.id.toLowerCase().includes(q) || `${s.name} ${s.state ?? ''}`.toLowerCase().includes(q))).slice(0, 12)
   }, [stations, q, origin, favorites, liveOnly, liveIds])
 
   const findNearZip = async (zip) => {
+    const id = ++lookup.current
     setBusy(true)
     setMessage(`Looking up ${zip}…`)
     try {
       const [, where] = await Promise.all([load(), lookupZip(zip)])
+      if (id !== lookup.current) return // the search box has moved on
       setOrigin({ lat: where.lat, lng: where.lng })
       setMessage(`Closest stations to ${where.place} (${zip}):`)
     } catch (e) {
+      if (id !== lookup.current) return
       setOrigin(null)
       setMessage(e.message)
     } finally {
-      setBusy(false)
+      if (id === lookup.current) setBusy(false)
     }
   }
 
   const findNearMe = async () => {
     if (!navigator.geolocation) return setMessage('Your browser does not share location.')
+    const id = ++lookup.current
     setBusy(true)
     setMessage('Finding you…')
     try {
@@ -69,13 +74,15 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
         load(),
         new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 15000, maximumAge: 600000 })),
       ])
+      if (id !== lookup.current) return // the user started typing while we waited
       setQuery('')
       setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude })
       setMessage('Closest stations to you:')
     } catch (e) {
+      if (id !== lookup.current) return
       setMessage(e.code === 1 ? 'Location permission was denied. Search by name instead.' : `Couldn't get your location (${e.message}).`)
     } finally {
-      setBusy(false)
+      if (id === lookup.current) setBusy(false)
     }
   }
 
@@ -91,6 +98,8 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
           onFocus={() => load().catch(() => {})}
           onChange={(e) => {
             const v = e.target.value
+            lookup.current++ // cancels any zip / near-me lookup still in flight
+            setBusy(false)
             setOrigin(null)
             setMessage('')
             setQuery(v)

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { heightAt, seriesAt, formatStationTime, formatAtStation, ft } from '../tides.js'
+import { heightAt, seriesAt, offsetAt, formatStationTime, formatAtStation, ft } from '../tides.js'
 
 const HEIGHT = 190
 const PAD = { top: 44, bottom: 50, left: 12, right: 12 }
@@ -11,7 +11,7 @@ const FUTURE_H = 24
  * predictions where loaded, else interpolated from highs/lows), with the gauge's
  * measured water drawn over it when the station has a gauge.
  */
-export default function TideChart({ events, now, offsetMs, predicted, observed, flood }) {
+export default function TideChart({ events, now, predicted, observed, flood }) {
   const [ref, width] = useWidth()
 
   const start = now.getTime() - PAST_H * 3600e3
@@ -43,9 +43,13 @@ export default function TideChart({ events, now, offsetMs, predicted, observed, 
   const forecastNow = seriesAt(predicted, now.getTime()) ?? heightAt(events, now)
 
   // Hour ticks every 6 hours, on the station's clock.
+  // (each tick uses the station offset at that moment, so they stay on 12/6 o'clock across a clock change)
   const ticks = []
-  const firstTick = Math.ceil((start + offsetMs) / (6 * 3600e3)) * 6 * 3600e3 - offsetMs
-  for (let t = firstTick; t <= end; t += 6 * 3600e3) ticks.push(new Date(t))
+  const HALF_HOUR = 30 * 60e3
+  for (let t = Math.ceil(start / HALF_HOUR) * HALF_HOUR; t <= end; t += HALF_HOUR) {
+    const wall = new Date(t + offsetAt(events, t))
+    if (wall.getUTCMinutes() === 0 && wall.getUTCHours() % 6 === 0) ticks.push(new Date(t))
+  }
 
   return (
     <div ref={ref} className="chart">
@@ -60,7 +64,7 @@ export default function TideChart({ events, now, offsetMs, predicted, observed, 
           <g key={t.getTime()}>
             <line x1={x(t)} x2={x(t)} y1={PAD.top - 8} y2={HEIGHT - 22} stroke="currentColor" opacity="0.1" />
             <text x={x(t)} y={HEIGHT - 6} textAnchor="middle" className="tick">
-              {formatAtStation(t, offsetMs, { hour: 'numeric' })}
+              {formatAtStation(t, offsetAt(events, t), { hour: 'numeric' })}
             </text>
           </g>
         ))}

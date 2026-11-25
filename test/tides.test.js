@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { heightAt, tideNow, seriesAt, stationDate, formatDay, formatCountdown, formatDuration, formatStationTime, tideMood } from '../src/tides.js'
-import { baltimoreEvents, NOW, EST } from './helpers.js'
+import { heightAt, tideNow, seriesAt, offsetAt, stationDate, formatDay, formatCountdown, formatDuration, formatStationTime, tideMood } from '../src/tides.js'
+import { baltimoreEvents, mockFetch, NOW, EST } from './helpers.js'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -16,6 +16,49 @@ describe('fetchHiLo pairing (GMT list ↔ station-local list)', () => {
     // NOAA's published Baltimore tides for 2026-11-25
     const day = events.filter((e) => e.local.startsWith('2026-11-25')).map((e) => [e.local.slice(11), e.type, e.height])
     expect(day).toEqual([['01:36', 'L', 0.188], ['06:10', 'H', 0.873], ['12:03', 'L', -0.216], ['19:06', 'H', 1.766]])
+  })
+})
+
+describe('fetchHiLo pairing: edge cases', () => {
+  // A UTC-8 station: the local list starts 8 hours later than the GMT list.
+  const tide = (i, v) => ({ gmt: new Date(Date.UTC(2026, 10, 24, 1, 12) + i * 6.2 * 3600e3), type: i % 2 ? 'L' : 'H', v })
+  const fmt = (d) => d.toISOString().slice(0, 16).replace('T', ' ')
+  const serve = async (tides, offsetH = -8) => {
+    mockFetch((u) => ({
+      predictions: tides
+        .filter((t) => (u.searchParams.get('time_zone') === 'gmt' ? true : t.gmt.getTime() + offsetH * 3600e3 >= Date.UTC(2026, 10, 24)))
+        .map((t) => ({ t: fmt(u.searchParams.get('time_zone') === 'gmt' ? t.gmt : new Date(t.gmt.getTime() + offsetH * 3600e3)), v: t.v, type: t.type })),
+    }))
+    const { fetchHiLo } = await import('../src/noaa.js')
+    return fetchHiLo('9414290')
+  }
+  it('two consecutive highs with identical heights each keep their own local time', async () => {
+    const tides = ['5.200', '1.000', '5.200', '0.900', '5.200', '1.100', '4.800', '0.700'].map((v, i) => tide(i, v))
+    const events = await serve(tides)
+    expect(events.length).toBe(tides.length - 2) // the first two GMT tides fall before the local list starts
+    for (const e of events) expect(e.local).toBe(fmt(new Date(e.time.getTime() - 8 * 3600e3)))
+  })
+  it('throws a clear error when nothing lines up', async () => {
+    mockFetch((u) => ({ predictions: u.searchParams.get('time_zone') === 'gmt' ? [{ t: '2026-11-24 01:00', v: '1.0', type: 'H' }] : [] }))
+    const { fetchHiLo } = await import('../src/noaa.js')
+    await expect(fetchHiLo('x')).rejects.toThrow(/No tide predictions/)
+  })
+})
+
+describe('offsetAt (station UTC offset follows daylight-saving changes)', () => {
+  // Clocks go back on 1 Nov 2026 at 06:00 UTC: EDT (-4) before, EST (-5) after.
+  const ev = (iso, local) => ({ time: new Date(iso), local, height: 1, type: 'H' })
+  const events = [
+    ev('2026-10-31T20:00:00Z', '2026-10-31 16:00'),
+    ev('2026-11-01T02:00:00Z', '2026-10-31 22:00'),
+    ev('2026-11-01T08:30:00Z', '2026-11-01 03:30'),
+    ev('2026-11-01T14:30:00Z', '2026-11-01 09:30'),
+  ]
+  it('uses the nearest tide, so times after the change get the new offset', () => {
+    expect(offsetAt(events, new Date('2026-10-31T21:00:00Z')) / 3600e3).toBe(-4)
+    expect(offsetAt(events, new Date('2026-11-01T12:00:00Z')) / 3600e3).toBe(-5)
+    expect(offsetAt(events, Date.parse('2026-11-02T00:00:00Z')) / 3600e3).toBe(-5) // beyond the last tide
+    expect(offsetAt(events, Date.parse('2026-10-01T00:00:00Z')) / 3600e3).toBe(-4) // before the first
   })
 })
 

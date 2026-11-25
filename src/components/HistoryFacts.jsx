@@ -26,7 +26,9 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
   const word = dir === 'high' ? 'high' : 'low'
 
   let currentFact
-  if (!current) {
+  if (!current && !records) {
+    currentFact = null // no long-term records for this gauge: can't say how unusual this is
+  } else if (!current) {
     currentFact = <>{dir === 'high' ? '📈' : '📉'} <strong>The {word}est water since records began{records ? ` in ${records.since}` : ''}!</strong></>
   } else if (now - current.time < 3 * DAY) {
     currentFact = <>🙂 Normal here: the water was last this {word} ({ft(level)}) {relative(current.time, now)}.</>
@@ -43,13 +45,13 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
     <section className="panel history">
       <h2>📜 History</h2>
       <ul className="facts">
-        <li><span className="fact-label">Right now · {ft(level)}</span>{currentFact}</li>
+        {currentFact && <li><span className="fact-label">Right now · {ft(level)}</span>{currentFact}</li>}
         {flood && (
           <li>
             <span className="fact-label">Flooding · starts at {ft(flood.minor)}</span>
             {lastFlood
               ? <>🌊 Last reached flood level {relative(lastFlood.time, now)}, on {date(lastFlood)} ({ft(lastFlood.height)}).</>
-              : <>🌊 Hasn't reached flood level since records began{records ? ` in ${records.since}` : ''}.</>}
+              : records ? <>🌊 Hasn't reached flood level since records began in {records.since}.</> : <>🌊 No flood on record in recent months.</>}
           </li>
         )}
         {records && (
