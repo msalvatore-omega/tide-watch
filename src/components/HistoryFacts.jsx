@@ -19,7 +19,7 @@ function relative(time, now) {
 }
 
 export default function HistoryFacts({ history, flood, now, offsetMs }) {
-  if (history.status === 'loading') return <section className="panel history"><h2>📜 History</h2><p className="hint">Searching records…</p></section>
+  if (history.status === 'loading') return <div className="panel history"><p className="hint history-loading">📜 Searching records…</p></div>
   if (history.status !== 'ok') return null
   const { level, dir, current, lastFlood, records } = history.data
   const date = (r) => formatDate(r.time, offsetMs, r.monthOnly)
@@ -41,9 +41,16 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
     )
   }
 
+  // One-line summary; the details open on tap (keeps the Now tab short).
+  const headline = !current && !records ? 'History and records'
+    : !current ? `${dir === 'high' ? 'Highest' : 'Lowest'} water on record`
+    : now - current.time < 3 * DAY ? `Normal: last this ${word} ${relative(current.time, now)}`
+    : `${dir === 'high' ? 'Highest' : 'Lowest'} water since ${date(current)}`
+  const unusual = !current ? Boolean(records) : now - current.time >= 3 * DAY
+
   return (
-    <section className="panel history">
-      <h2>📜 History</h2>
+    <details className="panel history" open={unusual}>
+      <summary><span className="history-title">📜 History</span> <span className="history-headline">{headline}</span></summary>
       <ul className="facts">
         {currentFact && <li><span className="fact-label">Right now · {ft(level)}</span>{currentFact}</li>}
         {flood && (
@@ -62,6 +69,6 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
         )}
       </ul>
       <p className="hint small-print">NOAA verified records, on today's tide datum (sea level has risen since early years).</p>
-    </section>
+    </details>
   )
 }

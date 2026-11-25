@@ -533,3 +533,23 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 .cur-table tr.flood .kind-cell { color: var(--high); font-weight: 600; }
 .cur-table tr.ebb .kind-cell { color: var(--low-text); font-weight: 600; }
 @media (max-width: 560px) { .cur-cards { grid-template-columns: 1fr 1fr 1fr; } .cur-cards .card .big { font-size: 0.95rem; } .cur-cards .card { padding: 8px; } }
+
+/* --- At a glance (+ optional AI question box) --- */
+.glance { margin: 0 0 10px; padding-bottom: 10px; }
+.glance-text { margin: 2px 0 8px; line-height: 1.45; }
+.glance-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.glance-chips .chip { white-space: normal; text-align: left; min-height: 34px; padding: 4px 12px; background: var(--bg); }
+.glance-chips .chip.on { background: var(--brand); }
+.glance-answer { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--bg); line-height: 1.45; }
+.ai-tag { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; padding: 1px 6px; border-radius: 6px; background: var(--panel); color: var(--muted); vertical-align: 1px; }
+.ai-note { display: block; margin-top: 4px; font-size: 0.75rem; color: var(--muted); }
+.ai-ask { display: flex; gap: 8px; margin-top: 10px; }
+.ai-ask input { flex: 1; min-width: 0; min-height: 40px; padding: 6px 10px; font-size: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.ai-ask .secondary { min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; }
+details.history { padding: 4px 12px; }
+details.history > summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.history-title { font-weight: 600; color: var(--muted); }
+.history-headline { font-size: 0.92rem; }
+details.history[open] > summary { margin-bottom: 4px; }
+details.history[open] { padding-bottom: 8px; }
+.history-loading { margin: 8px 0; }

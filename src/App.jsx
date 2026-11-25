@@ -13,6 +13,7 @@ import Conditions from './components/Conditions.jsx'
 import WeekTable from './components/WeekTable.jsx'
 import Planner from './components/Planner.jsx'
 import Currents from './components/Currents.jsx'
+import Glance from './components/Glance.jsx'
 import AlertsPanel, { AlertBanner, SurgeBanner, useSwingAlerts } from './components/AlertsPanel.jsx'
 
 const DEFAULT_STATION = '8574680' // Baltimore (Fort McHenry), MD
@@ -324,6 +325,21 @@ function Tidely() {
               accent="low"
             />
           </section>
+
+          <Glance
+            key={stationId}
+            station={station}
+            online={online}
+            now={now}
+            events={events}
+            tide={tide}
+            live={live}
+            forecastNow={forecastNow}
+            alerts={swing.alerts}
+            flood={flood}
+            surgeFeet={surgeFeet}
+            weather={weather.status === 'ok' ? weather.data : null}
+          />
 
           <Conditions
             weather={weather.status === 'ok' ? weather.data : null}

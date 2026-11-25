@@ -8,39 +8,45 @@ Data comes from NOAA's free [CO-OPS Tides & Currents API](https://api.tidesandcu
 
 ## Features
 
-Three tabs:
+Four tabs:
 
 **🌊 Now**
 - **Live beach scene**: the water sits where the tide is right now: the live gauge
   reading when the station has one (about 300 do), otherwise NOAA's forecast.
-- **Right now / next high / next low**: measured height, trend and how far it is
-  above or below the forecast; countdowns to the next high and low.
-- **Conditions**: wind, water and air temperature, pressure trend (from the gauge,
-  or the nearest one), sunrise/sunset, moon phase and spring/neap tides.
-- **Chart**: 9 hours back to 24 hours ahead; measured water over the forecast.
-- **Flood levels**: NOAA's minor/moderate/major flood heights drawn on the chart, a
-  warning when water is at flood level or a high tide in the next 24 hours is forecast
-  to reach it (including any surge the gauge is showing), and 🌊 marks in the Week table.
+- **Right now / next high / next low** with countdowns, and how far the water is above
+  or below the forecast.
+- **✨ At a glance**: a plain-English summary and one-tap answers ("Lowest tide this
+  weekend?", "Any flooding this week?"), written by rules from the app's own data.
+  No AI, no server, works offline. An optional "Ask AI" box for free-form questions
+  appears when the server has an AI key (see below).
+- **Conditions**: wind, water and air temperature, pressure trend, sunrise/sunset,
+  moon phase and spring/neap tides.
+- **Chart**: 9 hours back to 24 hours ahead; measured water over the forecast, with
+  NOAA's flood levels drawn in. Flood warnings when the gauge or a coming high tide
+  reaches them.
 - **History** (gauge stations): the last time the water was this high or low, the last
-  flood, and all-time records with dates — from NOAA's verified records back to 1902
-  for Baltimore, plus recent unverified readings. Cached on the device.
-- **Alerts**: big swings (top 10% for the station, or a size you choose) and surge
-  warnings (gauge off the forecast by a set amount), with "Add to calendar".
+  flood, and all-time records with dates.
+- **Alerts**: big swings and surge warnings, with levels saved per station and
+  "Add to calendar".
 
 **📅 Week**: every high and low for 7 days with sunrise/sunset and moon; printable.
 
-**🧭 Plan**: when is the water above/below a height you choose over the next 7 days
-(e.g. to launch a boat or walk the flats), optionally daylight only.
+**🧭 Plan**: when the water is above/below a height you choose over the next 7 days,
+optionally daylight only.
+
+**🌀 Currents**: slack water and max flood/ebb at the nearest NOAA current station,
+with an estimate of what the current is doing now.
+
+Also: search by zip code, name or "📍 Near me" with live-gauge badges; ★ favorites;
+installable to a phone's home screen; dark mode; keyboard and screen-reader friendly
+(no axe WCAG 2 AA violations); shareable links (`?station=8574680&tab=week`).
 
 **Offline**: the app and the tide data for stations you've viewed (plus favorites) are
 saved on the device, so predictions, the Week table and the Planner work with no signal.
 
-Also: search by zip code, name or "📍 Near me"; ★ favorite stations; installable to a
-phone's home screen; dark mode; shareable links (`?station=8574680&tab=week`).
-
-**Phone notifications (on hold)**: in-app and background push notifications are built
-but switched off. Set `NOTIFICATIONS_ENABLED = true` in `src/config.js` to bring them
-back; background alerts also need the alerts server (below) deployed.
+**Phone notifications (on hold)**: built but switched off. Set
+`NOTIFICATIONS_ENABLED = true` in `src/config.js` to bring them back; background alerts
+also need the server (below) deployed.
 
 ## Run locally
 
@@ -50,7 +56,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 42 unit tests: tide math, alerts, surge, sun/moon, planner, history
+npm test        # 56 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.
@@ -67,7 +73,8 @@ command `npm run build`, output folder `dist` (already in `netlify.toml`).
 
 ## Alerts server (`server/`)
 
-A Cloudflare Worker (free plan) that sends alerts while the app is closed.
+A Cloudflare Worker (free plan) for the two things a web page can't do alone: send
+alerts while the app is closed, and answer free-form questions with AI.
 
 - Every 5 minutes (cron trigger) it checks each subscribed station: big swings
   starting within 3 hours, and live-gauge surge vs the forecast. It reuses the
@@ -78,10 +85,18 @@ A Cloudflare Worker (free plan) that sends alerts while the app is closed.
 
 Endpoints: `GET /vapid`, `POST /subscribe`, `POST /unsubscribe`, `POST /test`, `GET /health`.
 
+**AI questions (optional).** `POST /ai/ask` answers a free-form question about one
+station with Claude (`@anthropic-ai/sdk`, default model `claude-opus-5-5`, set by
+`AI_MODEL` in `wrangler.jsonc`). The server builds the prompt's data itself from NOAA
+for the given station ID, so it can't be used as a general chatbot; limits per visitor
+and per day (`AI_PER_VISITOR_DAILY`, `AI_DAILY_LIMIT`) cap the cost. It stays off until
+the `ANTHROPIC_API_KEY` secret is set (repository secret of the same name, or
+`npx wrangler secret put ANTHROPIC_API_KEY`). `GET /ai/status`, `POST /ai/briefing`.
+
 ```bash
 cd server
 npm install
-npm test          # crypto checked against independent libraries; engine tested with real NOAA data
+npm test          # 18 tests: push crypto vs independent libraries, alert engine and AI flow with real NOAA data
 npx wrangler dev  # local server on :8787 (add --test-scheduled, then GET /__scheduled)
 ```
 
@@ -103,10 +118,14 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/astro.js` | Sunrise/sunset and moon phase |
 | `src/history.js` | Flood levels, "last time this high/low", records |
 | `src/favorites.js` | Favorite stations |
+| `src/currents.js` | Tidal-current state from slack/max events |
+| `src/briefing.js` | "At a glance" summary and preset answers (rules, no AI) |
+| `src/ai.js` | Client for the optional AI question box |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
 | `src/components/` | Beach scene, chart, conditions, week table, planner, station picker, alerts |
 | `src/push.js` | Registers the device with the alerts server |
-| `public/sw.js` | Service worker: shows notifications, including background pushes |
+| `public/sw.js` | Service worker: offline cache, and notifications |
+| `test/` | App unit tests (vitest) |
 | `server/` | Alerts server (Cloudflare Worker) |
 
 Tide predictions are for general information only, not for navigation.

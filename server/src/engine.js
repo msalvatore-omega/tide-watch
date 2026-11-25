@@ -9,6 +9,7 @@ import { findAlerts } from '../../src/alerts.js'
 import { liveNow, diffText } from '../../src/surge.js'
 import { formatStationTime } from '../../src/tides.js'
 import { sendPush, generateVapidKeys, b64u } from './webpush.js'
+import { generate, buildContext, AiError } from './ai.js'
 
 const SWING_LEAD_MS = 3 * 3600e3 // notify ~3 hours before a big swing
 const HILO_MAX_AGE_MS = 12 * 3600e3 // refresh cached predictions twice a day
@@ -29,6 +30,7 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS sent (sub_id TEXT NOT NULL, key TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (sub_id, key));
   CREATE TABLE IF NOT EXISTS surge (sub_id TEXT PRIMARY KEY, dir TEXT NOT NULL, at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS ai_usage (day TEXT NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, who));
 `
 
 const rows = (cursor) => [...cursor]
@@ -62,12 +64,57 @@ export function validSubscription(sub) {
 }
 
 export class Engine {
-  constructor(sql, { subject, siteUrl, log = () => {} }) {
+  constructor(sql, { subject, siteUrl, log = () => {}, ai = {} }) {
     this.sql = sql
     this.subject = subject // contact for push services, e.g. a site URL
     this.siteUrl = siteUrl
     this.log = log
+    // ai: { apiKey, model, dailyLimit, perVisitorLimit, client? (tests) }
+    this.ai = { model: 'claude-opus-5-5', dailyLimit: 300, perVisitorLimit: 25, ...ai }
     sql.exec(SCHEMA)
+  }
+
+  // ---------- AI briefing and questions ----------
+
+  aiEnabled() { return Boolean(this.ai.apiKey || this.ai.client) }
+
+  /** Count one AI call against today's totals; throws when a limit is reached. */
+  aiSpend(who, now) {
+    const day = new Date(now).toISOString().slice(0, 10)
+    const count = (k) => rows(this.sql.exec('SELECT n FROM ai_usage WHERE day = ? AND who = ?', day, k))[0]?.n ?? 0
+    if (count('*') >= this.ai.dailyLimit) throw new AiError("Today's AI limit for Tidely has been reached. It resets at midnight UTC.", 429)
+    if (count(who) >= this.ai.perVisitorLimit) throw new AiError("You've reached today's limit for AI answers. It resets at midnight UTC.", 429)
+    for (const k of ['*', who]) {
+      this.sql.exec('INSERT INTO ai_usage (day, who, n) VALUES (?, ?, 1) ON CONFLICT(day, who) DO UPDATE SET n = n + 1', day, k)
+    }
+    this.sql.exec('DELETE FROM ai_usage WHERE day < ?', new Date(now - 3 * 86400e3).toISOString().slice(0, 10))
+  }
+
+  async aiRun(stationId, question, who, now) {
+    if (!this.aiEnabled()) throw new AiError('AI features are not set up on this server.', 503)
+    if (!/^[A-Za-z0-9]{1,16}$/.test(stationId ?? '')) throw new AiError('Invalid station.', 400)
+    const events = await this.hilo(stationId, now)
+    const context = await buildContext(stationId, events, now)
+    this.aiSpend(who, now)
+    const out = await generate({ apiKey: this.ai.apiKey, model: this.ai.model, client: this.ai.client, context, question })
+    this.log(`ai ${question ? 'ask' : 'briefing'} ${stationId}: ${out.usage?.input_tokens ?? '?'} in, ${out.usage?.output_tokens ?? '?'} out, ${out.model}`)
+    return out.text
+  }
+
+  /** Briefing for a station, shared by all visitors for 30 minutes. */
+  async aiBriefing(stationId, who, now = Date.now()) {
+    const cached = this.getKV(`briefing:${stationId}`)
+    if (cached && now - cached.at < 30 * 60e3) return { text: cached.text, generatedAt: cached.at, cached: true }
+    const text = await this.aiRun(stationId, null, who, now)
+    this.setKV(`briefing:${stationId}`, { at: now, text })
+    return { text, generatedAt: now, cached: false }
+  }
+
+  async aiAsk(stationId, question, who, now = Date.now()) {
+    const q = String(question ?? '').replace(/\s+/g, ' ').trim()
+    if (q.length < 3) throw new AiError('Type a question first.', 400)
+    if (q.length > 300) throw new AiError('Please keep questions under 300 characters.', 400)
+    return { text: await this.aiRun(stationId, q, who, now), generatedAt: now }
   }
 
   getKV(k) {

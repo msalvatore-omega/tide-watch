@@ -17,7 +17,14 @@
     "SITE_URL": "https://msalvatore-omega.github.io/tide-watch/",
     // Contact URL sent to push services (required by the Web Push standard).
     "VAPID_SUBJECT": "https://msalvatore-omega.github.io/tide-watch/",
-    "ALLOWED_ORIGINS": "https://msalvatore-omega.github.io,http://localhost:5173,http://localhost:4173"
+    "ALLOWED_ORIGINS": "https://msalvatore-omega.github.io,http://localhost:5173,http://localhost:4173",
+    // AI briefing / questions. They stay off until the ANTHROPIC_API_KEY secret is set:
+    //   npx wrangler secret put ANTHROPIC_API_KEY
+    // Model: claude-opus-5-5 (about 1 cent per answer). claude-haiku-5-5 is far cheaper;
+    // claude-fable-5-2 is the most capable and about twice the price. Limits are calls per UTC day.
+    "AI_MODEL": "claude-opus-5-5",
+    "AI_DAILY_LIMIT": "300",
+    "AI_PER_VISITOR_DAILY": "25"
   },
 
   "observability": { "enabled": true }

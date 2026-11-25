@@ -6,7 +6,8 @@
 // (see README → Alerts server).
 export const NOTIFICATIONS_ENABLED = false
 
-// Address of the Tidely alerts server (Cloudflare Worker, see server/).
-// Empty = no background alerts; notifications then only work while the app is open.
+// Address of the Tidely server (Cloudflare Worker, see server/). It provides background
+// alerts and the AI briefing / "Ask Tidely" (the latter only once it has an AI key).
+// Empty = neither: notifications only work while the app is open, and AI is hidden.
 // Can be overridden at build time with VITE_ALERTS_API.
 export const ALERTS_API = import.meta.env.VITE_ALERTS_API ?? ''
