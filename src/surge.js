@@ -46,6 +46,6 @@ export function diffText(diff) {
 export function liveMood(live, fallbackMood, surgeFeet) {
   if (!isSurge(live, surgeFeet)) return fallbackMood
   return live.diff > 0
-    ? 'Running well above prediction: wind set-up or storm surge. 🌬️'
-    : 'Running well below prediction: offshore wind is blowing the water out. 🌬️'
+    ? 'Running well above prediction: wind set-up or storm surge.'
+    : 'Running well below prediction: offshore wind is blowing the water out.'
 }

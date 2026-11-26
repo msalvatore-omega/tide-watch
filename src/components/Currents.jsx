@@ -1,6 +1,7 @@
 // Currents tab, as instruments: a compass dial showing the set and drift now, and a
 // flood/ebb curve for the next 24 hours with slack water and the maxima marked.
 // The plain table is one tap away.
+import Icon from './Icon.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { fetchCurrentStations, fetchCurrents, distanceMiles } from '../noaa.js'
 import { currentNow, speedAt, compass, windAgainstCurrent } from '../currents.js'
@@ -86,7 +87,7 @@ export default function Currents({ station, events: tideEvents, now, wind }) {
           ))}
         </select>
       </div>
-      {selected.miles > 15 && <p className="hint">⚠️ {nmText(selected.miles)} away: the current here may differ.</p>}
+      {selected.miles > 15 && <p className="hint"><Icon name="warning" /> {nmText(selected.miles)} away: the current here may differ.</p>}
 
       {data.status === 'loading' && <p className="hint">Loading current predictions…</p>}
       {data.status === 'error' && <p className="hint">Couldn't load currents: {data.message}</p>}
@@ -106,7 +107,7 @@ export default function Currents({ station, events: tideEvents, now, wind }) {
 
           {against && (
             <p className={`wind-tide${against.strong ? ' strong' : ''}`} role="status">
-              <span aria-hidden="true">🌬️⇄🌊</span> <strong>Wind against tide.</strong> {wind.dir} wind {Math.round(wind.knots)} kt is blowing against the {cur.state} current
+              <Icon name="wind" /> ⇄ <Icon name="wave" /> <strong>Wind against tide.</strong> {wind.dir} wind {Math.round(wind.knots)} kt is blowing against the {cur.state} current
               ({cur.knots.toFixed(1)} kt setting {compass(cur.dir)}): expect a shorter, steeper sea than the wind alone would raise{cur.nextSlack ? `, easing toward slack water at ${time(cur.nextSlack.time)}` : ''}.
             </p>
           )}

@@ -47,21 +47,21 @@ const SYNODIC = 29.530588853
 const NEW_MOON_REF = Date.UTC(2000, 0, 6, 18, 14) // a known new moon
 
 const PHASES = [
-  ['🌑', 'New moon'], ['🌒', 'Waxing crescent'], ['🌓', 'First quarter'], ['🌔', 'Waxing gibbous'],
-  ['🌕', 'Full moon'], ['🌖', 'Waning gibbous'], ['🌗', 'Last quarter'], ['🌘', 'Waning crescent'],
+  'New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous',
+  'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent',
 ]
 
 /** Moon phase, and whether tides are near spring (bigger) or neap (smaller). */
 export function moonPhase(date) {
   const age = (((date.getTime() - NEW_MOON_REF) / DAY_MS) % SYNODIC + SYNODIC) % SYNODIC
-  const [emoji, name] = PHASES[Math.round((age / SYNODIC) * 8) % 8]
+  const name = PHASES[Math.round((age / SYNODIC) * 8) % 8]
   const illumination = (1 - Math.cos((2 * Math.PI * age) / SYNODIC)) / 2
   // Spring tides come a day or two either side of new and full moon; neap tides near the quarters.
   const fromSyzygy = Math.min(age, Math.abs(age - SYNODIC / 2), SYNODIC - age)
   const tides = fromSyzygy <= 2.5 ? 'spring' : fromSyzygy >= SYNODIC / 4 - 2.5 ? 'neap' : null
   const daysTo = (target) => (((target - age) % SYNODIC) + SYNODIC) % SYNODIC
   return {
-    emoji, name, age, illumination, tides,
+    name, age, illumination, tides,
     nextFull: new Date(date.getTime() + daysTo(SYNODIC / 2) * DAY_MS),
     nextNew: new Date(date.getTime() + daysTo(0) * DAY_MS),
   }

@@ -1,5 +1,6 @@
 // The 🕘 button at the bottom of the page and the "What's new" window it opens:
 // Tidely's version history, newest first (from src/changelog.js).
+import Icon from './Icon.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog.js'
 
@@ -41,7 +42,7 @@ export default function WhatsNew() {
   return (
     <>
       <button type="button" className="whatsnew-btn no-print" onClick={show} aria-label={`Version ${CURRENT_VERSION}: what's new${unread ? ' (updated since your last visit)' : ''}`}>
-        <span aria-hidden="true">🕘</span> v{CURRENT_VERSION}
+        <Icon name="clock" /> v{CURRENT_VERSION}
         {unread && <span className="whatsnew-dot" aria-hidden="true" />}
       </button>
 

@@ -1074,3 +1074,11 @@ footer .about { flex: 1; min-width: 0; }
 @media (prefers-color-scheme: dark) { :root { --now-text: #ff9a9e; } }
 .hero-moon { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: none; }
 .hero-moon small { font-size: 0.7rem; color: var(--muted); }
+
+/* --- Line icons --- */
+.icon { display: inline-block; vertical-align: -0.18em; flex: none; }
+.fold > summary .icon, .folds > details.history > summary .icon { color: var(--brand); }
+.tour-icon { color: var(--brand); }
+.glance-icon { color: var(--brand); display: inline-flex; }
+.light i { display: inline-flex; color: var(--muted); }
+h1 .icon { color: var(--brand); }

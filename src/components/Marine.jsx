@@ -1,5 +1,6 @@
 // Marine warnings in force and the marine forecast, from the National Weather Service.
 // Warnings are listed first (tap for the detail); the forecast opens on request.
+import Icon from './Icon.jsx'
 import { useEffect, useState } from 'react'
 import { fetchMarine, currentAlerts } from '../nws.js'
 import { formatAtStation } from '../tides.js'
@@ -25,7 +26,7 @@ export function useMarine(station, online) {
   return online && state?.id === id ? state : null
 }
 
-const ICON = (event) => (/hurricane|tropical|storm warning|gale/i.test(event) ? '🚩' : /flood|surge/i.test(event) ? '🌊' : /fog/i.test(event) ? '🌫️' : /small craft|wind/i.test(event) ? '🏴' : '⚠️')
+const ICON = (event) => (/hurricane|tropical|storm warning|gale/i.test(event) ? 'flag' : /flood|surge/i.test(event) ? 'wave' : /fog/i.test(event) ? 'fog' : /small craft|wind/i.test(event) ? 'wind' : 'warning')
 const tidy = (s) => s.replace(/\n(?!\n)/g, ' ').replace(/ {2,}/g, ' ').trim()
 
 export default function Marine({ marine, now, offsetMs }) {
@@ -46,7 +47,7 @@ export default function Marine({ marine, now, offsetMs }) {
           {alerts.map((a) => (
             <li key={a.id}>
               <button type="button" className={`wx-alert sev-${a.rank}`} aria-expanded={open === a.id} onClick={() => setOpen(open === a.id ? null : a.id)}>
-                <span aria-hidden="true">{ICON(a.event)}</span>
+                <Icon name={ICON(a.event)} />
                 <strong>{a.event}</strong>
                 <small>{a.onset && a.onset > now ? `from ${when(a.onset)}` : `until ${when(a.ends)}`}</small>
               </button>
@@ -62,7 +63,7 @@ export default function Marine({ marine, now, offsetMs }) {
       )}
       {marine.forecast.length > 0 && (
         <details className="wx-forecast">
-          <summary>{alerts.length ? '⛅ Marine forecast' : `⛅ ${marine.forecast[0].name}: ${marine.forecast[0].text}`}</summary>
+          <summary><Icon name="cloud" /> {alerts.length ? 'Marine forecast' : `${marine.forecast[0].name}: ${marine.forecast[0].text}`}</summary>
           <dl>
             {marine.forecast.slice(alerts.length ? 0 : 1, 6).map((p) => (
               <div key={p.name}><dt>{p.name}</dt><dd>{p.text}</dd></div>

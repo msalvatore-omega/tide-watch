@@ -71,7 +71,7 @@ const dayNote = (e, station, events) => (station?.lat == null ? '' : daylight(e,
 export const PRESETS = [
   {
     id: 'weekend-low',
-    icon: '📉',
+    icon: 'trendDown',
     short: 'Weekend LW',
     label: 'Lowest water this weekend?',
     answer({ now, events, station }) {
@@ -92,7 +92,7 @@ export const PRESETS = [
   },
   {
     id: 'flood-week',
-    icon: '🌊',
+    icon: 'wave',
     short: 'Flooding?',
     label: 'Any coastal flooding this week?',
     answer({ now, events, flood, live }) {
@@ -112,7 +112,7 @@ export const PRESETS = [
   },
   {
     id: 'highest-week',
-    icon: '↕️',
+    icon: 'range',
     short: 'Extremes',
     label: 'Highest and lowest water this week?',
     answer({ now, events, station }) {
@@ -127,7 +127,7 @@ export const PRESETS = [
   },
   {
     id: 'daylight-low',
-    icon: '☀️',
+    icon: 'sun',
     short: 'Day LW',
     label: 'Next daylight low water?',
     answer({ now, events, station }) {

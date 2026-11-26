@@ -45,7 +45,7 @@ export function alertsToICS(alerts, stationName, reminderMinutes = 120) {
   const esc = (s) => s.replace(/([,;\\])/g, '\\$1')
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tidely//Tidal Range Alerts//EN', 'CALSCALE:GREGORIAN']
   for (const a of alerts) {
-    const title = `🌊 Large tidal range: ${a.rising ? 'rise' : 'fall'} of ${ft(a.size)}`
+    const title = `Large tidal range: ${a.rising ? 'rise' : 'fall'} of ${ft(a.size)}`
     const [fromName, toName] = a.rising ? ['LW', 'HW'] : ['HW', 'LW']
     lines.push(
       'BEGIN:VEVENT',

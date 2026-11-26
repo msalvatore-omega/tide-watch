@@ -1,3 +1,4 @@
+import Icon from './Icon.jsx'
 import { Explain } from './Explain.jsx'
 import { useEffect, useState } from 'react'
 import { findAlerts, alertsToICS } from '../alerts.js'
@@ -53,7 +54,7 @@ export function AlertBanner({ alerts, now }) {
   if (!soon) return null
   return (
     <div className="alert-banner" role="status">
-      <strong>⚠️ Large tidal range {soon.inProgress ? 'under way' : formatCountdown(soon.from.time - now)}</strong>
+      <strong><Icon name="warning" /> Large tidal range {soon.inProgress ? 'under way' : formatCountdown(soon.from.time - now)}</strong>
       <span>
         {soon.rising ? 'Rise' : 'Fall'} of {ft(soon.size)} to {hwlw(soon.to)} {formatStationTime(soon.to.local)} · {soon.ratio.toFixed(1)}× the usual range
       </span>
@@ -66,7 +67,7 @@ export function SurgeBanner({ reading, surgeFeet, onShowLive }) {
   if (!isSurge(reading, surgeFeet)) return null
   return (
     <div className="alert-banner surge" role="status">
-      <strong>🌬️ Water is {diffText(reading.diff)}</strong>
+      <strong><Icon name="wind" /> Water is {diffText(reading.diff)}</strong>
       <span>
         Observed {ft(reading.height)}, predicted {ft(reading.predicted)}: {reading.diff > 0 ? 'wind set-up or storm surge' : 'offshore wind blowing the water out'}.
         {onShowLive && <> <button type="button" className="link inline" onClick={onShowLive}>See live →</button></>}
@@ -106,7 +107,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
       const key = `${station.id}:${a.from.time.toISOString()}`
       if (load(NOTIFIED_KEY, {})[key]) continue
       notify(
-        `🌊 Large tidal range at ${station.name}`,
+        `Large tidal range at ${station.name}`,
         `${a.rising ? 'Rise' : 'Fall'} of ${ft(a.size)}: ${hwlw(a.from)} ${formatStationTime(a.from.local, { withDay: false })} to ${hwlw(a.to)} ${formatStationTime(a.to.local, { withDay: false })}.`,
         key, // same tag = replaces rather than duplicates
       )
@@ -141,7 +142,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
     if (!over || stillActive || !inApp || !canNotify() || readingAge > 60 * 60e3) return
 
     notify(
-      `🌬️ Water ${diffText(readingDiff)} at ${station.name}`,
+      `Water ${diffText(readingDiff)} at ${station.name}`,
       `The tide gauge reads ${ft(Math.abs(readingDiff))} ${dir} prediction: ${dir === 'above' ? 'wind set-up or storm surge' : 'offshore wind blowing the water out'}.`,
       `${station.id}:surge`,
     )
@@ -214,18 +215,18 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
         <h2>Large ranges · next 7 days</h2>
         <Explain id="ranges" />
         {alerts.length > 0 && (
-          <button type="button" className="link small" onClick={downloadCalendar}>📅 Add to calendar</button>
+          <button type="button" className="link small" onClick={downloadCalendar}><Icon name="calendar" /> Add to calendar</button>
         )}
       </div>
 
       {alerts.length === 0 ? (
-        <p className="calm">😌 No unusually large ranges in the next week.</p>
+        <p className="calm"><Icon name="calm" /> No unusually large ranges in the next week.</p>
       ) : (
         <ul className="alert-list">
           {shown.map((a) => (
             <li key={a.from.time.toISOString()} className={a.inProgress ? 'live' : ''}>
               <div className="swing">
-                <span className="size">{a.rising ? '⬆️' : '⬇️'} {ft(a.size)}</span>
+                <span className="size"><Icon name={a.rising ? 'up' : 'down'} /> {ft(a.size)}</span>
                 <span className="ratio">{a.ratio.toFixed(1)}× usual</span>
               </div>
               <div className="when">
@@ -246,7 +247,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
       )}
 
       <details className="alert-settings">
-        <summary>⚙️ Alert settings</summary>
+        <summary><Icon name="gear" /> Alert settings</summary>
         <div className="alert-controls">
           <p className="hint">
             Usual range {ft(stats.typical)} · flagging {ft(threshold)} and over{settings.mode === 'auto' ? ' (largest 10%)' : ''}
@@ -283,14 +284,14 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
             <>
               <div className="alert-buttons">
                 <button type="button" className={notifyOn ? 'secondary on' : 'secondary'} onClick={toggleNotify} aria-pressed={notifyOn} disabled={busy}>
-                  {busy ? 'Turning on…' : notifyOn ? '🔔 Notifications on' : '🔕 Notify me'}
+                  {busy ? 'Turning on…' : <><Icon name={notifyOn ? 'bell' : 'bellOff'} /> {notifyOn ? 'Notifications on' : 'Notify me'}</>}
                 </button>
               </div>
               {pushOn && <button type="button" className="link test-push" onClick={sendTest}>Send a test notification</button>}
               {notifyMsg && <p className="hint">{notifyMsg}</p>}
               {pushOn && (
                 <p className="hint">
-                  ✅ Alerts for {station.name} arrive even when Tidely is closed: about 3 hours before each large range
+                  <Icon name="check" /> Alerts for {station.name} arrive even when Tidely is closed: about 3 hours before each large range
                   {settings.surgeFeet != null ? ', and when the tide gauge passes your surge level' : ''}. Checked every 5 minutes.
                   This device follows one station, the one you're viewing.
                 </p>

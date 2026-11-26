@@ -1,5 +1,6 @@
 // Help, on demand: a small ? button that explains how to read a panel, a tappable
 // <Term> for nautical words, and the full glossary.
+import Icon from './Icon.jsx'
 import { useRef, useState } from 'react'
 import { TERMS, EXPLAIN } from '../glossary.js'
 
@@ -68,7 +69,7 @@ export function Glossary() {
   const keys = Object.keys(TERMS).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
   return (
     <>
-      <button type="button" className="link" onClick={() => { setOpen(true); ref.current?.showModal() }}>📖 Glossary of terms</button>
+      <button type="button" className="link" onClick={() => { setOpen(true); ref.current?.showModal() }}><Icon name="book" /> Glossary of terms</button>
       <HelpDialog dialogRef={ref} title="Glossary" onClose={() => setOpen(false)}>
         {open && <TermList keys={keys} />}
       </HelpDialog>

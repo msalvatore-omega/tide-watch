@@ -1,5 +1,6 @@
 // Week tab. Default view: one small tide curve per day (night shaded, HW/LW marked).
 // The full table is one tap away and is what gets printed.
+import Icon from './Icon.jsx'
 import { Explain } from './Explain.jsx'
 import { useState } from 'react'
 import { heightAt, formatStationTime, formatAtStation, offsetAt, stationDate, formatDay, isClock24, hNum, ft } from '../tides.js'
@@ -91,11 +92,11 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
         <Explain id="week" />
         <div className="week-tools no-print">
           <div className="seg small" role="radiogroup" aria-label="View">
-            {[['chart', '📈'], ['table', '☰']].map(([v, icon]) => (
-              <button key={v} type="button" role="radio" aria-checked={view === v} aria-label={v === 'chart' ? 'Curves' : 'Table'} className={view === v ? 'on' : ''} onClick={() => setView(v)}>{icon}</button>
+            {[['chart', 'chart'], ['table', 'table']].map(([v, icon]) => (
+              <button key={v} type="button" role="radio" aria-checked={view === v} aria-label={v === 'chart' ? 'Curves' : 'Table'} className={view === v ? 'on' : ''} onClick={() => setView(v)}><Icon name={icon} /></button>
             ))}
           </div>
-          <button type="button" className="link small" onClick={() => window.print()} aria-label="Print the tide table">🖨️</button>
+          <button type="button" className="link small" onClick={() => window.print()} aria-label="Print the tide table"><Icon name="print" /></button>
         </div>
       </div>
       <p className="hint print-only">{station?.name}{station?.state ? `, ${station.state}` : ''} · heights in feet above chart datum (MLLW) · station time</p>
@@ -132,7 +133,7 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
             <div className="day-head">
               <strong>{formatDay(r.day)}</strong>
               <span className="day-astro">
-                {r.sun?.sunrise && <>☀️↑ {formatAtStation(r.sun.sunrise, r.dayOffset)} · ☀️↓ {formatAtStation(r.sun.sunset, r.dayOffset)} </>}
+                {r.sun?.sunrise && <><Icon name="sun" />↑ {formatAtStation(r.sun.sunrise, r.dayOffset)} · <Icon name="sun" />↓ {formatAtStation(r.sun.sunset, r.dayOffset)} </>}
                 <MoonDisc moon={r.moon} size={14} />
               </span>
             </div>
@@ -144,8 +145,8 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
                     <td>{formatStationTime(e.local, { withDay: false })}</td>
                     <td className="num">{ft(e.height)}</td>
                     <td className="flag">
-                      {floodStage(e.height, flood) && <span title={`${floodStage(e.height, flood)} flood stage`}>🌊</span>}
-                      {bigEnds.has(e.time.getTime()) && <span title="Ends an unusually large range">⚠️</span>}
+                      {floodStage(e.height, flood) && <Icon name="wave" label={`${floodStage(e.height, flood)} flood stage`} />}
+                      {bigEnds.has(e.time.getTime()) && <Icon name="warning" label="Ends an unusually large range" />}
                     </td>
                   </tr>
                 ))}
@@ -153,7 +154,7 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
             </table>
           </div>
         ))}
-        <p className="hint small-print">⚠️ ends an unusually large range{flood ? ` · 🌊 reaches flood stage (${ft(flood.minor)})` : ''}</p>
+        <p className="hint small-print"><Icon name="warning" /> ends an unusually large range{flood && <> · <Icon name="wave" /> reaches flood stage ({ft(flood.minor)})</>}</p>
       </div>
     </section>
   )

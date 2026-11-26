@@ -1,3 +1,4 @@
+import Icon from './components/Icon.jsx'
 import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
 import { tideNow, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, hDiff, tempText, setClock24, isClock24, setMetric, isMetric, ft } from './tides.js'
@@ -44,7 +45,7 @@ class ErrorBoundary extends Component {
     const home = () => { location.href = location.pathname }
     return (
       <main>
-        <h1>🌊 Tidely</h1>
+        <h1><Icon name="wave" /> Tidely</h1>
         <div className="error" role="alert">
           Something went wrong showing this page.
           <button className="link" onClick={home}>Start over</button>
@@ -209,7 +210,7 @@ function Tidely() {
   if (floodWarning) {
     badges.push({
       id: 'flood',
-      icon: '🌊',
+      icon: 'wave',
       label: floodWarning.now ? `${cap(floodWarning.stage)} flood` : `Flood risk ${formatStationTime(floodWarning.event.local, { withDay: false })}`,
       detail: floodWarning.now
         ? `${cap(floodWarning.stage)} coastal flooding now: gauge reads ${ft(floodWarning.height)}; minor flood stage is ${ft(flood.minor)}.`
@@ -221,7 +222,7 @@ function Tidely() {
   if (isSurge(live, surgeFeet)) {
     badges.push({
       id: 'surge',
-      icon: '🌬️',
+      icon: 'wind',
       label: hDiff(live.diff),
       detail: `Water is ${diffText(live.diff)}: observed ${ft(live.height)}, predicted ${ft(live.predicted)}. ${live.diff > 0 ? 'Wind set-up or storm surge.' : 'Offshore wind is blowing the water out.'}`,
     })
@@ -230,7 +231,7 @@ function Tidely() {
   if (bigRange) {
     badges.push({
       id: 'range',
-      icon: '⚠️',
+      icon: 'warning',
       label: bigRange.inProgress ? 'Large range' : `Large range ${formatCountdown(bigRange.from.time - now)}`,
       detail: `Large tidal range${bigRange.inProgress ? ' under way' : ''}: ${bigRange.rising ? 'rise' : 'fall'} of ${ft(bigRange.size)} to ${hwlw(bigRange.to)} ${formatStationTime(bigRange.to.local)}, ${bigRange.ratio.toFixed(1)}× the usual range.`,
     })
@@ -240,7 +241,7 @@ function Tidely() {
     badges.push({
       id: `wx-${a.id}`,
       kind: a.rank >= 3 ? 'wx severe' : 'wx',
-      icon: '🚩',
+      icon: 'flag',
       label: a.event,
       detail: `${a.event} ${a.onset && a.onset > now ? `from ${formatAtStation(a.onset, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : `until ${formatAtStation(a.ends, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`} (National Weather Service). ${text.length > 420 ? `${text.slice(0, 420)}…` : text}`,
     })
@@ -265,7 +266,7 @@ function Tidely() {
   return (
     <main>
       <header>
-        <h1>🌊 Tidely</h1>
+        <h1><Icon name="wave" /> Tidely</h1>
         {!picking && (
           <div className="station-row">
             <button className="station" onClick={() => setPicking(true)} aria-label="Change station">
@@ -331,7 +332,7 @@ function Tidely() {
 
       {!online && (
         <div className="notice offline" role="status">
-          📴 <strong>You're offline.</strong> Showing saved tide predictions{error ? '' : ' for this station'}; gauge observations and weather will return when you reconnect.
+          <Icon name="offline" /> <strong>You're offline.</strong> Showing saved tide predictions{error ? '' : ' for this station'}; gauge observations and weather will return when you reconnect.
         </div>
       )}
 
@@ -389,7 +390,7 @@ function Tidely() {
               <div className="scene-badges">
                 {badges.map((b) => (
                   <button key={b.id} type="button" className={`scene-pill ${b.kind ?? b.id}${shownBadge?.id === b.id ? ' on' : ''}`} aria-expanded={shownBadge?.id === b.id} onClick={() => setBadgeOpen(shownBadge?.id === b.id ? null : b.id)}>
-                    <span aria-hidden="true">{b.icon}</span> {b.label}
+                    <Icon name={b.icon} /> {b.label}
                   </button>
                 ))}
               </div>
@@ -399,11 +400,11 @@ function Tidely() {
 
           <div className="folds">
             {marine?.forecast.length > 0 && (
-              <Fold icon="⛅" title="Marine forecast" hint={marine.forecast[0].name}>
+              <Fold icon="cloud" title="Marine forecast" hint={marine.forecast[0].name}>
                 <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />
               </Fold>
             )}
-            <Fold icon="☀️" title="Sun and moon" hint={moonPhase(now).name}>
+            <Fold icon="sun" title="Sun and moon" hint={moonPhase(now).name}>
               <Instruments
                 now={now}
                 sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
@@ -411,10 +412,10 @@ function Tidely() {
                 offsetMs={tide.offsetMs}
               />
             </Fold>
-            <Fold icon="🚦" title="By your rules" hint="launch · fish · flats">
+            <Fold icon="rules" title="By your rules" hint="launch · fish · flats">
               <RuleLights my={my} events={events} now={now} heightNow={view.height} onOpen={() => setTab('plan')} />
             </Fold>
-            <Fold icon="💬" title="Quick answers" hint="summary · weekend">
+            <Fold icon="chat" title="Quick answers" hint="summary · weekend">
               <Glance
                 key={stationId}
                 station={station}
@@ -432,7 +433,7 @@ function Tidely() {
             </Fold>
             {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
             {station && (
-              <Fold icon="↕️" title="Large ranges" hint={swing.alerts?.length ? `${swing.alerts.length} this week` : 'none this week'}>
+              <Fold icon="range" title="Large ranges" hint={swing.alerts?.length ? `${swing.alerts.length} this week` : 'none this week'}>
                 <AlertsPanel
                   station={station}
                   now={now}
@@ -451,10 +452,10 @@ function Tidely() {
         <>
           <Planner events={events} now={now} station={station} live={live} />
           <div className="folds">
-            <Fold icon="⚓" title="My berth" hint={my.berth ? 'depth at your spot' : 'set your depth and draft'}>
+            <Fold icon="anchor" title="My berth" hint={my.berth ? 'depth at your spot' : 'set your depth and draft'}>
               <Berth key={`berth-${stationId}-${metric}`} my={my} events={events} now={now} heightNow={view.height} observed={Boolean(live)} />
             </Fold>
-            <Fold icon="🚦" title="By your rules" hint="launch · fish · flats">
+            <Fold icon="rules" title="By your rules" hint="launch · fish · flats">
               <Rules key={`rules-${stationId}`} my={my} events={events} now={now} heightNow={view.height} />
             </Fold>
           </div>
@@ -473,10 +474,10 @@ function Tidely() {
               {hasGauge ? '; gauge observations are preliminary, every 6 minutes' : ''}. Not for navigation.
             </p>
             <div className="about-tools">
-              <button type="button" className="link" onClick={toggleClock}>🕒 Use the {clock24 ? '12' : '24'}-hour clock</button>
-              <button type="button" className="link" onClick={toggleUnits}>📏 Use {metric ? 'feet and °F' : 'metres and °C'}</button>
+              <button type="button" className="link" onClick={toggleClock}><Icon name="clock" /> Use the {clock24 ? '12' : '24'}-hour clock</button>
+              <button type="button" className="link" onClick={toggleUnits}><Icon name="ruler" /> Use {metric ? 'feet and °F' : 'metres and °C'}</button>
               <Glossary />
-              <button type="button" className="link" onClick={() => setTourRequest((n) => n + 1)}>👋 Show the tour</button>
+              <button type="button" className="link" onClick={() => setTourRequest((n) => n + 1)}><Icon name="tour" /> Show the tour</button>
             </div>
           </details>
         )}
@@ -493,7 +494,7 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 function Fold({ icon, title, hint, children }) {
   return (
     <details className="fold">
-      <summary><span aria-hidden="true">{icon}</span> <strong>{title}</strong>{hint && <small>{hint}</small>}</summary>
+      <summary><Icon name={icon} size="1.3em" /> <strong>{title}</strong>{hint && <small>{hint}</small>}</summary>
       <div className="fold-body">{children}</div>
     </details>
   )

@@ -1,5 +1,6 @@
 // The tide in the user's own terms: the depth of water at their berth, and three lights
 // for common jobs driven by rules they set. Both are kept per station on this device.
+import Icon from './Icon.jsx'
 import { useState } from 'react'
 import { berthNow, defaultRules, ruleStatus, RULES } from '../insight.js'
 import { ft, hUnit, toFeet, fromFeet, formatAtStation, offsetAt } from '../tides.js'
@@ -35,7 +36,7 @@ export function RuleLights({ my, events, now, heightNow, onOpen }) {
     <button type="button" className="lights" onClick={onOpen} aria-label="By your rules: open the plan">
       {b && (
         <span className={`light ${b.clearance > 1 ? 'on' : b.afloat ? 'soon' : 'bad'}`}>
-          <i aria-hidden="true">⚓</i>
+          <i><Icon name="anchor" /></i>
           <b>{ft(b.depth)} at berth</b>
           <small>{b.afloat ? `${ft(b.clearance)} under keel` : 'aground'}</small>
         </span>
@@ -44,7 +45,7 @@ export function RuleLights({ my, events, now, heightNow, onOpen }) {
         const st = ruleStatus(r.id, my.rules[r.id], events, now, heightNow)
         return (
           <span key={r.id} className={`light ${tone(st, now)}`}>
-            <i aria-hidden="true">{r.icon}</i>
+            <i><Icon name={r.icon} /></i>
             <b>{r.name}</b>
             <small>{statusText(st, time)}</small>
           </span>
@@ -83,7 +84,7 @@ export function Berth({ my, events, now, heightNow, observed }) {
   return (
     <section className="panel berth">
       <div className="panel-head">
-        <h2>⚓ My berth</h2>
+        <h2><Icon name="anchor" /> My berth</h2>
         <Explain id="berth" />
       </div>
       <div className="fields">
@@ -142,7 +143,7 @@ export function Rules({ my, events, now, heightNow }) {
             <li key={r.id} className={`rule ${tone(st, now)}`}>
               <span className="rule-dot" aria-hidden="true" />
               <span className="rule-main">
-                <strong><span aria-hidden="true">{r.icon}</span> {r.name}</strong>
+                <strong><Icon name={r.icon} /> {r.name}</strong>
                 <small>{statusText(st, time)}</small>
               </span>
               {r.id === 'turn'

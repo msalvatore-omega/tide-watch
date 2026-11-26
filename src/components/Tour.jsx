@@ -1,15 +1,16 @@
 // A short first-visit tour: five cards, skippable, and reachable again from ⓘ.
+import Icon from './Icon.jsx'
 import { useEffect, useRef, useState } from 'react'
 
 const KEY = 'tidely.tour.v1'
 const seen = () => { try { return localStorage.getItem(KEY) === 'done' } catch { return true } }
 
 const STEPS = [
-  { icon: '🌊', title: 'Welcome aboard', text: 'Tidely shows the tide where you are: the height now, and the next high and low water. Here is a one-minute look around.' },
-  { icon: '📈', title: 'The tide now', text: 'The big figure is the height of tide. The gauge and curve beneath show where the water is, where it has been and where it is going; the red line is now. Below are the next high and low water and the conditions at the gauge.' },
-  { icon: '📍', title: 'Your station', text: 'Tap the station name to search by zip code, port or map. Stations marked “Tide gauge” measure the real water; the rest give predictions only. Tap ☆ to keep favourites one tap away.' },
-  { icon: '🧭', title: 'Four tabs', text: 'Now is the present tide and weather; tap any row beneath it for more. Week draws the next seven days. Plan finds when there is enough water for you. Currents shows which way the stream is running.' },
-  { icon: '❓', title: 'Help is always there', text: 'Tap any ? for how to read a panel and what its terms mean. Underlined words explain themselves. The ⓘ at the foot of the page has the glossary, units and this tour.' },
+  { icon: 'wave', title: 'Welcome aboard', text: 'Tidely shows the tide where you are: the height now, and the next high and low water. Here is a one-minute look around.' },
+  { icon: 'trendUp', title: 'The tide now', text: 'The big figure is the height of tide. The gauge and curve beneath show where the water is, where it has been and where it is going; the red line is now. Below are the next high and low water and the conditions at the gauge.' },
+  { icon: 'pin', title: 'Your station', text: 'Tap the station name to search by zip code, port or map. Stations marked “Tide gauge” measure the real water; the rest give predictions only. Tap ☆ to keep favourites one tap away.' },
+  { icon: 'tour', title: 'Four tabs', text: 'Now is the present tide and weather; tap any row beneath it for more. Week draws the next seven days. Plan finds when there is enough water for you. Currents shows which way the stream is running.' },
+  { icon: 'help', title: 'Help is always there', text: 'Tap any ? for how to read a panel and what its terms mean. Underlined words explain themselves. The ⓘ at the foot of the page has the glossary, units and this tour.' },
 ]
 
 export default function Tour({ request }) {
@@ -38,7 +39,7 @@ export default function Tour({ request }) {
     <dialog ref={ref} className="tour" aria-labelledby="tour-title" onClose={done}>
       {open && (
         <>
-          <div className="tour-icon" aria-hidden="true">{s.icon}</div>
+          <div className="tour-icon"><Icon name={s.icon} size="2.6rem" /></div>
           <h2 id="tour-title">{s.title}</h2>
           <p aria-live="polite">{s.text}</p>
           <div className="tour-dots" role="img" aria-label={`Step ${step + 1} of ${STEPS.length}`}>

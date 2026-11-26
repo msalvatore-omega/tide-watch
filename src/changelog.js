@@ -11,6 +11,14 @@
 
 export const CHANGELOG = [
   {
+    version: '2.2.0',
+    date: '2026-11-26',
+    title: 'Plain line icons',
+    changes: [
+      { kind: 'improved', text: 'The colourful emoji are replaced throughout by plain line icons that match the rest of the page and look the same on every phone.' },
+    ],
+  },
+  {
     version: '2.1.0',
     date: '2026-11-26',
     title: 'The moon on the main graphic',

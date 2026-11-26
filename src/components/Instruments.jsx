@@ -1,5 +1,6 @@
 // Sun and moon as a picture: a 24-hour daylight bar with a marker for now, and the moon
 // drawn at its phase. (Wind, temperatures and barometer are drawn on the scene itself.)
+import Icon from './Icon.jsx'
 import { formatAtStation } from '../tides.js'
 import { Explain } from './Explain.jsx'
 
@@ -49,7 +50,7 @@ function DaylightBar({ sun, moon, now, offsetMs }) {
         <div className="daybar-now" style={{ left: `${pct(now)}%` }} />
       </div>
       <div className="daybar-labels" aria-hidden="true">
-        {hasSun ? <><span>☀️↑ {time(sun.sunrise)}</span><span>☀️↓ {time(sun.sunset)}</span></> : <span>{sun?.polar === 'night' ? 'Polar night' : sun?.polar === 'day' ? 'Midnight sun' : ''}</span>}
+        {hasSun ? <><span><Icon name="sun" />↑ {time(sun.sunrise)}</span><span><Icon name="sun" />↓ {time(sun.sunset)}</span></> : <span>{sun?.polar === 'night' ? 'Polar night' : sun?.polar === 'day' ? 'Midnight sun' : ''}</span>}
         <span className="daybar-moon"><MoonDisc moon={moon} size={18} /> {tides ?? moon.name}</span>
       </div>
     </div>

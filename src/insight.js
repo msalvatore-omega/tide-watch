@@ -99,9 +99,9 @@ export function defaultRules(events) {
 }
 
 export const RULES = [
-  { id: 'launch', icon: '🚤', name: 'Launch', describe: (r, ft) => `Height of tide ${ft(r.min)} or more` },
-  { id: 'turn', icon: '🎣', name: 'Fish the turn', describe: (r) => `Within ${r.minutes} min of high or low water` },
-  { id: 'flats', icon: '🥾', name: 'Walk the flats', describe: (r, ft) => `Height of tide ${ft(r.max)} or less` },
+  { id: 'launch', icon: 'boat', name: 'Launch', describe: (r, ft) => `Height of tide ${ft(r.min)} or more` },
+  { id: 'turn', icon: 'fish', name: 'Fish the turn', describe: (r) => `Within ${r.minutes} min of high or low water` },
+  { id: 'flats', icon: 'walk', name: 'Walk the flats', describe: (r, ft) => `Height of tide ${ft(r.max)} or less` },
 ]
 
 /**

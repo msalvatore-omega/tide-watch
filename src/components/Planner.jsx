@@ -1,6 +1,7 @@
 // Plan tab: "When is the height of tide above/below X ft?" as a picture. Drag the line
 // on the tide curve to set the height; each day is a 24-hour bar with the usable
 // windows filled in and night shaded. Tap a window for its times.
+import Icon from './Icon.jsx'
 import { Explain } from './Explain.jsx'
 import { useRef, useState } from 'react'
 import { heightAt, offsetAt, stationDate, formatDay, formatAtStation, formatDuration, isClock24, ft } from '../tides.js'
@@ -161,7 +162,7 @@ export default function Planner({ events, now, station, live }) {
           <button type="button" aria-label="Raise by a tenth of a foot" onClick={() => update({ feet: round1(feet + 0.1) })}>+</button>
         </div>
         {hasSun && (
-          <button type="button" className={opts.daylight ? 'toggle on' : 'toggle'} aria-pressed={opts.daylight} aria-label="Daylight only" onClick={() => update({ daylight: !opts.daylight })}>☀️</button>
+          <button type="button" className={opts.daylight ? 'toggle on' : 'toggle'} aria-pressed={opts.daylight} aria-label="Daylight only" onClick={() => update({ daylight: !opts.daylight })}><Icon name="sun" /></button>
         )}
       </div>
 

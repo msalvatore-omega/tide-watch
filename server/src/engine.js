@@ -184,7 +184,7 @@ export class Engine {
     if (row.last_test && now - row.last_test < 60e3) throw new Error('Please wait a minute between tests.')
     this.sql.exec('UPDATE subs SET last_test = ? WHERE id = ?', now, id)
     const ok = await this.push(row, {
-      title: '🌊 Tidely alerts are on',
+      title: 'Tidely alerts are on',
       body: `Standing watch on ${row.station_name}: alerts will arrive even when the app is closed.`,
       tag: 'tidewatch-test',
       url: this.stationUrl(row.station_id),
@@ -247,7 +247,7 @@ export class Engine {
       const key = `swing:${row.station_id}:${a.from.time.toISOString()}`
       if (rows(this.sql.exec('SELECT 1 FROM sent WHERE sub_id = ? AND key = ?', row.id, key)).length) continue
       const ok = await this.push(row, {
-        title: `🌊 Large tidal range at ${row.station_name}`,
+        title: `Large tidal range at ${row.station_name}`,
         body: `${a.rising ? 'Rise' : 'Fall'} of ${a.size.toFixed(1)} ft: ${a.rising ? 'LW' : 'HW'} ${formatStationTime(a.from.local, { withDay: false })} to ${a.rising ? 'HW' : 'LW'} ${formatStationTime(a.to.local, { withDay: false })}.`,
         tag: `${row.station_id}:${a.from.time.toISOString()}`, // same tag as the app, so no duplicates
         url: this.stationUrl(row.station_id),
@@ -274,7 +274,7 @@ export class Engine {
     }
     if (Math.abs(reading.diff) < surgeFeet) return 0
     const ok = await this.push(row, {
-      title: `🌬️ Water ${diffText(reading.diff)} at ${row.station_name}`,
+      title: `Water ${diffText(reading.diff)} at ${row.station_name}`,
       body: `The tide gauge reads ${Math.abs(reading.diff).toFixed(1)} ft ${dir} prediction: ${dir === 'above' ? 'wind set-up or storm surge' : 'offshore wind blowing the water out'}.`,
       tag: `${row.station_id}:surge`,
       url: `${this.stationUrl(row.station_id)}&mode=live`,

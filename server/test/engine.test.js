@@ -81,7 +81,7 @@ test('surge: notifies once when the gauge is off the forecast, not again while i
   await subscribe(devices.phone, { mode: 'auto', surgeFeet: 1 })
   await engine.check(NOW)
   assert.equal(surges().length, 1)
-  assert.match(surges()[0].title, /^🌬️ Water \d\.\d ft above predicted at Baltimore$/)
+  assert.match(surges()[0].title, /^Water \d\.\d ft above predicted at Baltimore$/)
   assert.equal(surges()[0].url, `https://example.com/tidely/?station=${STATION}&mode=live`)
   assert.equal((await engine.check(NOW + 5 * 60e3)).sent, 0, 'no repeat during the same surge')
   assert.equal(surges().length, 1)
@@ -121,7 +121,7 @@ test('swings: notifies ~3 hours before each big swing, once', async () => {
   assert.ok(run.sent >= 1)
   const msg = delivered.find((d) => d.tag === `${STATION}:${upcoming.from.time.toISOString()}`)
   assert.ok(msg, 'swing notification uses the same tag as the app')
-  assert.match(msg.title, /^🌊 Large tidal range at Baltimore$/)
+  assert.match(msg.title, /^Large tidal range at Baltimore$/)
   assert.match(msg.body, /^(Rise|Fall) of \d+\.\d ft: (LW|HW) \d{1,2}:\d{2} [AP]M to (HW|LW) \d{1,2}:\d{2} [AP]M\.$/)
   const count = delivered.length
   await engine.check(before + 5 * 60e3)
@@ -157,7 +157,7 @@ test('rejects bad input', async () => {
 test('test notification, rate limited to once a minute', async () => {
   await subscribe(devices.phone, {})
   await engine.test(devices.phone.subscription.endpoint, NOW)
-  assert.equal(delivered[0].title, '🌊 Tidely alerts are on')
+  assert.equal(delivered[0].title, 'Tidely alerts are on')
   await assert.rejects(engine.test(devices.phone.subscription.endpoint, NOW + 10e3), /wait a minute/)
   await engine.unsubscribe(devices.phone.subscription.endpoint)
   await assert.rejects(engine.test(devices.phone.subscription.endpoint, NOW + 120e3), /not subscribed/)

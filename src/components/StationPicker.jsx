@@ -1,3 +1,4 @@
+import Icon from './Icon.jsx'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchAllStations, fetchLiveStations, distanceMiles, lookupZip } from '../noaa.js'
 import { nmText } from '../tides.js'
@@ -113,8 +114,8 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
           }}
           aria-label="Search tide stations"
         />
-        <button type="button" className="secondary" onClick={findNearMe} disabled={busy}>📍 Nearest</button>
-        <button type="button" className={showMap ? 'secondary on' : 'secondary'} aria-pressed={showMap} onClick={() => { setShowMap(!showMap); load().catch(() => {}) }}>🗺️ Map</button>
+        <button type="button" className="secondary" onClick={findNearMe} disabled={busy}><Icon name="pin" /> Nearest</button>
+        <button type="button" className={showMap ? 'secondary on' : 'secondary'} aria-pressed={showMap} onClick={() => { setShowMap(!showMap); load().catch(() => {}) }}><Icon name="map" /> Map</button>
       </div>
 
       <label className="check live-filter">

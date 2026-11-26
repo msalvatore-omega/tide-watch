@@ -1,6 +1,7 @@
 // "How unusual is this?" as a picture: a scale from the lowest to the highest water
 // ever observed here, with today's height and flood stage marked. The sentences
 // (last time this high/low, last flood, record dates) open on tap.
+import Icon from './Icon.jsx'
 import { Explain } from './Explain.jsx'
 import { ft, hNum } from '../tides.js'
 
@@ -42,7 +43,7 @@ function RecordScale({ level, records, flood, offsetMs }) {
 }
 
 export default function HistoryFacts({ history, flood, now, offsetMs }) {
-  if (history.status === 'loading') return <div className="panel history"><p className="hint history-loading">📜 Searching records…</p></div>
+  if (history.status === 'loading') return <div className="panel history"><p className="hint history-loading"><Icon name="history" /> Searching records…</p></div>
   if (history.status !== 'ok') return null
   const { level, dir, current, lastFlood, records } = history.data
   const date = (r) => formatDate(r.time, offsetMs, r.monthOnly)
@@ -52,13 +53,13 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
   if (!current && !records) {
     currentFact = null // no long-term records for this gauge: can't say how unusual this is
   } else if (!current) {
-    currentFact = <>{dir === 'high' ? '📈' : '📉'} <strong>The {word}est water observed since records began{records ? ` in ${records.since}` : ''}.</strong></>
+    currentFact = <><Icon name={dir === 'high' ? 'trendUp' : 'trendDown'} /> <strong>The {word}est water observed since records began{records ? ` in ${records.since}` : ''}.</strong></>
   } else if (now - current.time < 3 * DAY) {
-    currentFact = <>🙂 Nothing unusual: the tide last stood this {word} ({ft(level)}) {relative(current.time, now)}.</>
+    currentFact = <><Icon name="calm" /> Nothing unusual: the tide last stood this {word} ({ft(level)}) {relative(current.time, now)}.</>
   } else {
     currentFact = (
       <>
-        {dir === 'high' ? '📈' : '📉'} <strong>{dir === 'high' ? 'Highest' : 'Lowest'} observed water since {date(current)}</strong> ({relative(current.time, now)}),
+        <Icon name={dir === 'high' ? 'trendUp' : 'trendDown'} /> <strong>{dir === 'high' ? 'Highest' : 'Lowest'} observed water since {date(current)}</strong> ({relative(current.time, now)}),
         when it {dir === 'high' ? 'reached' : 'fell to'} {ft(current.height)}.
       </>
     )
@@ -74,7 +75,7 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
   return (
     <details className="panel history">
       <summary>
-        <span aria-hidden="true">📜</span> <strong className="history-title">History</strong>
+        <Icon name="history" /> <strong className="history-title">History</strong>
         <span className={unusual ? 'history-headline unusual' : 'history-headline'}>{headline}</span>
       </summary>
       {records && <RecordScale level={level} records={records} flood={flood} offsetMs={offsetMs} />}
@@ -83,11 +84,11 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
         {flood && (
           <li>
             {lastFlood
-              ? <>🌊 Last reached flood stage ({ft(flood.minor)}) {relative(lastFlood.time, now)}, on {date(lastFlood)}: {ft(lastFlood.height)}.</>
-              : records ? <>🌊 Has not reached flood stage ({ft(flood.minor)}) since records began in {records.since}.</> : <>🌊 No flood stage on record in recent months.</>}
+              ? <><Icon name="wave" /> Last reached flood stage ({ft(flood.minor)}) {relative(lastFlood.time, now)}, on {date(lastFlood)}: {ft(lastFlood.height)}.</>
+              : records ? <><Icon name="wave" /> Has not reached flood stage ({ft(flood.minor)}) since records began in {records.since}.</> : <><Icon name="wave" /> No flood stage on record in recent months.</>}
           </li>
         )}
-        {records && <li>🏆 Highest observed {ft(records.high.height)} on {date(records.high)} · lowest {ft(records.low.height)} on {date(records.low)}.</li>}
+        {records && <li><Icon name="record" /> Highest observed {ft(records.high.height)} on {date(records.high)} · lowest {ft(records.low.height)} on {date(records.low)}.</li>}
       </ul>
       <p className="hint small-print">NOAA verified observations on today's chart datum. <Explain id="history" /></p>
     </details>

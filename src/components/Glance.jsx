@@ -1,6 +1,7 @@
 // Quick answers as a row of icon buttons: the written summary and four common
 // questions, each shown only when tapped (rules, no AI). If the Tidely server has an
 // AI key, a free-form question box appears as well.
+import Icon from './Icon.jsx'
 import { useEffect, useState } from 'react'
 import { localBriefing, PRESETS } from '../briefing.js'
 import { aiAvailable, askTidely } from '../ai.js'
@@ -18,9 +19,9 @@ export default function Glance({ station, online, ...data }) {
   }, [])
 
   const items = [
-    { id: 'summary', icon: '📝', short: 'Summary', label: 'Tidal summary', answer: () => localBriefing(data).join(' ') },
+    { id: 'summary', icon: 'note', short: 'Summary', label: 'Tidal summary', answer: () => localBriefing(data).join(' ') },
     ...PRESETS.map((p) => ({ ...p, answer: () => p.answer({ ...data, station }) })),
-    ...(ai && online && station ? [{ id: 'ask', icon: '💬', short: 'Ask', label: 'Ask a question (AI)' }] : []),
+    ...(ai && online && station ? [{ id: 'ask', icon: 'chat', short: 'Ask', label: 'Ask a question (AI)' }] : []),
   ]
   const open = items.find((i) => i.id === openId)
 
@@ -42,7 +43,7 @@ export default function Glance({ station, online, ...data }) {
       <div className="glance-row">
         {items.map((i) => (
           <button key={i.id} type="button" className={openId === i.id ? 'glance-btn on' : 'glance-btn'} aria-expanded={openId === i.id} aria-label={i.label} onClick={() => setOpenId(openId === i.id ? null : i.id)}>
-            <span className="glance-icon" aria-hidden="true">{i.icon}</span>
+            <span className="glance-icon"><Icon name={i.icon} size="1.5em" /></span>
             <span className="glance-short" aria-hidden="true">{i.short}</span>
           </button>
         ))}

@@ -139,9 +139,9 @@ export const tempText = (f) => (metric ? `${Math.round(((f - 32) * 5) / 9)}°C` 
 
 /** A one-line seaman's read of the state of the tide. */
 export function tideMood({ fraction, rising }) {
-  if (fraction < 0.15) return 'Near low water: least depth this tide. Mind your under-keel clearance. ⚓'
-  if (fraction > 0.85) return 'Near high water: about the most depth you will get this tide. ⚓'
-  return rising ? 'Flood tide making: depths increasing. ⛵' : 'Ebb tide running: depths decreasing. Watch the shoals. ⛵'
+  if (fraction < 0.15) return 'Near low water: least depth this tide. Mind your under-keel clearance.'
+  if (fraction > 0.85) return 'Near high water: about the most depth you will get this tide.'
+  return rising ? 'Flood tide making: depths increasing.' : 'Ebb tide running: depths decreasing. Watch the shoals.'
 }
 
 /** Linear interpolation in a sorted { time, height } series (e.g. 6-minute data); null outside it. */

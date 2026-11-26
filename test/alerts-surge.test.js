@@ -46,7 +46,7 @@ describe('big-swing alerts', () => {
     expect(ics.match(/TRIGGER:-PT120M/g)).toHaveLength(alerts.length)
     expect(ics).toContain('Baltimore\\, MD') // commas escaped per the iCalendar format
     expect(ics).toMatch(/DTSTART:\d{8}T\d{6}Z/)
-    expect(ics).toMatch(/SUMMARY:🌊 Large tidal range: rise of 2\.0 ft/)
+    expect(ics).toMatch(/SUMMARY:Large tidal range: rise of 2\.0 ft/)
     expect(ics).toMatch(/LW -0\.2 ft → HW 1\.8 ft\. About 1\.9× the usual range here\./)
   })
 })
