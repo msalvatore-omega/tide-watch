@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currentNow, compass } from '../src/currents.js'
+import { currentNow, speedAt, compass } from '../src/currents.js'
 
 const t0 = Date.UTC(2026, 10, 25, 12)
 const at = (h, type, knots = 0) => ({ time: new Date(t0 + h * 3600e3), type, knots, floodDir: 310, ebbDir: 130 })
@@ -42,6 +42,12 @@ describe('currents', () => {
     expect(currentNow(events, now(-1))).toBeNull()
     expect(currentNow(events, now(13))).toBeNull()
     expect(currentNow([], now(1))).toBeNull()
+  })
+  it('signed speed for charting: flood positive, ebb negative, zero at slack', () => {
+    expect(speedAt(events, now(3))).toBeCloseTo(-0.6, 6)
+    expect(speedAt(events, now(9))).toBeCloseTo(0.4, 6)
+    expect(speedAt(events, now(6))).toBeCloseTo(0, 6)
+    expect(speedAt(events, now(20))).toBeNull()
   })
   it('handles stations that go max → max with no slack between (rotary currents)', () => {
     const rotary = [at(0, 'flood', 1.0), at(6, 'ebb', 0.5), at(12, 'flood', 1.0)]

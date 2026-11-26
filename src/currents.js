@@ -33,3 +33,10 @@ export function currentNow(events, now) {
     nextEbb: upcoming.find((e) => e.type === 'ebb') ?? null,
   }
 }
+
+/** Signed speed at time t for charting: flood positive, ebb negative, null outside the data. */
+export function speedAt(events, t) {
+  const c = currentNow(events, t)
+  if (!c) return null
+  return c.phase === 'ebb' ? -c.knots : c.knots
+}

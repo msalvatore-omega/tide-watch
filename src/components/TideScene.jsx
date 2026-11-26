@@ -18,9 +18,13 @@ const SAND_CRITTERS = [
   { x: 470, emoji: '🪸', size: 26 },
 ]
 
-export default function TideScene({ fraction, rising, night, highLabel, lowLabel }) {
+export default function TideScene({ fraction, rising, night, highLabel, lowLabel, floodFraction, floodLabel }) {
   const waterY = LOW_Y - fraction * (LOW_Y - HIGH_Y)
   const pole = 600
+  // Minor flood stage on the same scale as the water (shown when it fits in the picture).
+  const floodY = floodFraction == null ? null : LOW_Y - floodFraction * (LOW_Y - HIGH_Y)
+  const showFlood = floodY != null && floodY >= VIEW_TOP + 26 && floodY < HIGH_Y - 20
+  const poleTop = showFlood ? Math.min(190, floodY - 16) : 190
 
   return (
     <svg
@@ -89,7 +93,14 @@ export default function TideScene({ fraction, rising, night, highLabel, lowLabel
       </g>
 
       {/* Tide gauge */}
-      <rect x={pole} y="190" width="14" height={H - 150} fill="#8b5a2b" />
+      <rect x={pole} y={poleTop} width="14" height={H - poleTop} fill="#8b5a2b" />
+      {showFlood && (
+        <g>
+          <line x1={pole - 14} y1={floodY} x2={pole + 34} y2={floodY} stroke="#d9480f" strokeWidth="4" strokeDasharray="7 5" />
+          <rect x={pole + 36} y={floodY - 14} width="132" height="28" rx="8" fill="#fff0e8" stroke="#d9480f" strokeWidth="1.5" />
+          <text x={pole + 102} y={floodY + 6} fontSize="16" fontWeight="700" textAnchor="middle" fill="#a8350a">{floodLabel}</text>
+        </g>
+      )}
       <Mark y={HIGH_Y} x={pole} label={highLabel} />
       <Mark y={LOW_Y} x={pole} label={lowLabel} />
       <g style={{ transform: `translateY(${waterY}px)` }} className="water">

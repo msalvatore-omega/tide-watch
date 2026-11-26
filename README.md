@@ -17,41 +17,41 @@ flooding" always mean water over the land, to keep them apart from the flood tid
 
 ## Features
 
-Four tabs:
+Tidely is built to be read at a glance: instruments and charts first, words on demand.
+Every graphic carries a spoken description for screen readers.
 
 **🌊 Now**
-- **Live beach scene**: the water sits where the tide is right now: the live gauge
-  reading when the station has one (about 300 do), otherwise NOAA's forecast.
-- **Right now / next high / next low** with countdowns, and how far the water is above
-  or below the forecast.
-- **✨ At a glance**: a plain-English summary and one-tap answers ("Lowest tide this
-  weekend?", "Any flooding this week?"), written by rules from the app's own data.
-  No AI, no server, works offline. An optional "Ask AI" box for free-form questions
-  appears when the server has an AI key (see below).
-- **Conditions**: wind, water and air temperature, pressure trend, sunrise/sunset,
-  moon phase and spring/neap tides.
-- **Chart**: 9 hours back to 24 hours ahead; measured water over the forecast, with
-  NOAA's flood levels drawn in. Flood warnings when the gauge or a coming high tide
-  reaches them.
-- **History** (gauge stations): the last time the water was this high or low, the last
-  flood, and all-time records with dates.
-- **Alerts**: big swings and surge warnings, with levels saved per station and
-  "Add to calendar".
+- **Beach scene** with the water at the present height of tide, the flood-stage mark on
+  the tide pole, and warning badges (coastal flooding, surge, large range) you can tap.
+- **Tide dial**: an arc from low water to high water with a marker for the height now
+  (observed when the station has a gauge, otherwise predicted), flood/ebb/stand, and
+  the next LW and HW with countdowns.
+- **Quick answers**: icon buttons for a written summary and common questions (lowest
+  water this weekend, coastal flooding this week, extremes, next daylight low water).
+  Rules, no AI; an optional AI question box appears when the server has a key.
+- **Instruments**: wind compass (knots, Beaufort), sea/air temperature, barometer with
+  trend arrow, a daylight bar, and the moon drawn at its phase (springs/neaps).
+- **Chart**: observed water over the prediction, 9 hours back to 24 ahead, with flood
+  stage drawn in.
+- **History scale**: lowest to highest water on record with today and flood stage
+  marked; the dated facts open on tap.
+- **Large ranges** for the week with per-station alert levels and calendar export.
 
-**📅 Week**: every high and low for 7 days with sunrise/sunset and moon; printable.
+**📅 Week**: one small tide curve per day (night shaded, HW/LW marked, large ranges
+ringed); the full table is one tap away and is what prints.
 
-**🧭 Plan**: when the water is above/below a height you choose over the next 7 days,
-optionally daylight only.
+**🧭 Plan**: drag a line on the tide curve to set a height; each day is a 24-hour bar
+with the usable windows filled in. Above/below, daylight-only, tap a window for times.
 
-**🌀 Currents**: slack water and max flood/ebb at the nearest NOAA current station,
-with an estimate of what the current is doing now.
+**🌀 Currents**: a compass dial showing set and drift now, and a flood/ebb curve for
+24 hours with slack water and the maxima marked; table on demand.
 
-Also: search by zip code, name or "📍 Near me" with live-gauge badges; ★ favorites;
-installable to a phone's home screen; dark mode; keyboard and screen-reader friendly
-(no axe WCAG 2 AA violations); shareable links (`?station=8574680&tab=week`).
+Also: search by zip code, name or nearest, with tide-gauge badges; ★ favorites;
+installable to a phone's home screen; dark mode; no axe WCAG 2 AA violations;
+shareable links (`?station=8574680&tab=week`).
 
 **Offline**: the app and the tide data for stations you've viewed (plus favorites) are
-saved on the device, so predictions, the Week table and the Planner work with no signal.
+saved on the device, so predictions, the Week and Plan tabs work with no signal.
 
 **Phone notifications (on hold)**: built but switched off. Set
 `NOTIFICATIONS_ENABLED = true` in `src/config.js` to bring them back; background alerts
@@ -65,7 +65,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 58 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing
+npm test        # 59 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.
@@ -131,7 +131,7 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/briefing.js` | "At a glance" summary and preset answers (rules, no AI) |
 | `src/ai.js` | Client for the optional AI question box |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
-| `src/components/` | Beach scene, chart, conditions, week table, planner, station picker, alerts |
+| `src/components/` | Beach scene, tide dial, instruments, chart, week strips, planner timeline, currents dial, history scale, station picker, alerts |
 | `src/push.js` | Registers the device with the alerts server |
 | `public/sw.js` | Service worker: offline cache, and notifications |
 | `test/` | App unit tests (vitest) |

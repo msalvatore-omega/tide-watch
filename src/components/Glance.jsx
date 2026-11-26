@@ -1,6 +1,6 @@
-// "At a glance": a plain-English summary and one-tap answers, written by rules from
-// the app's own data (no AI). If the Tidely server has an AI key, a free-form
-// question box appears as well.
+// Quick answers as a row of icon buttons: the written summary and four common
+// questions, each shown only when tapped (rules, no AI). If the Tidely server has an
+// AI key, a free-form question box appears as well.
 import { useEffect, useState } from 'react'
 import { localBriefing, PRESETS } from '../briefing.js'
 import { aiAvailable, askTidely } from '../ai.js'
@@ -17,14 +17,17 @@ export default function Glance({ station, online, ...data }) {
     return () => { cancelled = true }
   }, [])
 
-  const lines = localBriefing(data)
-  const open = PRESETS.find((p) => p.id === openId)
+  const items = [
+    { id: 'summary', icon: '📝', short: 'Summary', label: 'Tidal summary', answer: () => localBriefing(data).join(' ') },
+    ...PRESETS.map((p) => ({ ...p, answer: () => p.answer({ ...data, station }) })),
+    ...(ai && online && station ? [{ id: 'ask', icon: '💬', short: 'Ask', label: 'Ask a question (AI)' }] : []),
+  ]
+  const open = items.find((i) => i.id === openId)
 
   const ask = async (e) => {
     e.preventDefault()
     const text = question.trim()
     if (text.length < 3) return
-    setOpenId(null)
     setAnswer({ status: 'loading', question: text })
     try {
       const a = await askTidely(station.id, text)
@@ -35,21 +38,18 @@ export default function Glance({ station, online, ...data }) {
   }
 
   return (
-    <section className="panel glance" aria-label="Tidal summary">
-      <h2>⚓ Tidal summary</h2>
-      <p className="glance-text">{lines.join(' ')}</p>
-
-      <div className="glance-chips">
-        {PRESETS.map((p) => (
-          <button key={p.id} type="button" className={openId === p.id ? 'chip on' : 'chip'} aria-expanded={openId === p.id} onClick={() => { setOpenId(openId === p.id ? null : p.id); setAnswer({ status: 'idle' }) }}>
-            {p.label}
+    <section className="glance" aria-label="Quick answers">
+      <div className="glance-row">
+        {items.map((i) => (
+          <button key={i.id} type="button" className={openId === i.id ? 'glance-btn on' : 'glance-btn'} aria-expanded={openId === i.id} aria-label={i.label} onClick={() => setOpenId(openId === i.id ? null : i.id)}>
+            <span className="glance-icon" aria-hidden="true">{i.icon}</span>
+            <span className="glance-short" aria-hidden="true">{i.short}</span>
           </button>
         ))}
       </div>
-      {open && <p className="glance-answer" aria-live="polite">{open.answer({ ...data, station })}</p>}
-
-      {ai && online && station && (
-        <>
+      {open && open.id !== 'ask' && <p className="glance-answer" aria-live="polite">{open.answer()}</p>}
+      {open?.id === 'ask' && (
+        <div className="glance-answer">
           <form className="ai-ask" onSubmit={ask}>
             <input
               type="text"
@@ -59,17 +59,17 @@ export default function Glance({ station, online, ...data }) {
               placeholder="Ask about tides, currents or weather here…"
               aria-label="Ask a question about tides at this station (answered by AI)"
             />
-            <button type="submit" className="secondary" disabled={answer.status === 'loading' || question.trim().length < 3}>Ask AI</button>
+            <button type="submit" className="secondary" disabled={answer.status === 'loading' || question.trim().length < 3}>Ask</button>
           </form>
-          {answer.status === 'loading' && <p className="hint" aria-live="polite">Thinking about “{answer.question}”…</p>}
+          {answer.status === 'loading' && <p className="hint" aria-live="polite">Working on “{answer.question}”…</p>}
           {answer.status === 'ok' && (
-            <p className="glance-answer" aria-live="polite">
+            <p aria-live="polite">
               <span className="ai-tag">AI</span> {answer.text}
               <span className="ai-note"> Written by AI from NOAA data; it can be wrong, so check the numbers.</span>
             </p>
           )}
           {answer.status === 'error' && <p className="hint" role="alert">{answer.message}</p>}
-        </>
+        </div>
       )}
     </section>
   )

@@ -1,5 +1,6 @@
-// "How unusual is this?" — the last time the water was this high/low, the last flood,
-// and all-time records, from NOAA's verified history.
+// "How unusual is this?" as a picture: a scale from the lowest to the highest water
+// ever observed here, with today's height and flood stage marked. The sentences
+// (last time this high/low, last flood, record dates) open on tap.
 import { ft } from '../tides.js'
 
 const DAY = 86400e3
@@ -8,6 +9,7 @@ function formatDate(time, offsetMs, monthOnly) {
   const d = new Date(time.getTime() + offsetMs)
   return d.toLocaleDateString([], { timeZone: 'UTC', month: monthOnly ? 'long' : 'short', day: monthOnly ? undefined : 'numeric', year: 'numeric' })
 }
+const year = (time, offsetMs) => new Date(time.getTime() + offsetMs).getUTCFullYear()
 
 function relative(time, now) {
   const days = (now - time) / DAY
@@ -16,6 +18,26 @@ function relative(time, now) {
   if (days < 60) return `${Math.round(days / 7)} weeks ago`
   if (days < 730) return `${Math.round(days / 30.4)} months ago`
   return `${Math.floor(days / 365.25)} years ago`
+}
+
+/** Record low … record high, with markers for now and minor flood stage. */
+function RecordScale({ level, records, flood, offsetMs }) {
+  const lo = records.low.height
+  const hi = records.high.height
+  const pct = (v) => Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100))
+  return (
+    <div className="scale" role="img" aria-label={`Scale from the lowest observed water, ${ft(lo)} in ${year(records.low.time, offsetMs)}, to the highest, ${ft(hi)} in ${year(records.high.time, offsetMs)}. Now ${ft(level)}${flood ? `; minor flood stage ${ft(flood.minor)}` : ''}.`}>
+      <div className="scale-bar" aria-hidden="true">
+        {flood && <div className="scale-flood" style={{ left: `${pct(flood.minor)}%` }} />}
+        {flood && <div className="scale-flood-tick" style={{ left: `${pct(flood.minor)}%` }}><span>flood {flood.minor.toFixed(1)}</span></div>}
+        <div className="scale-now" style={{ left: `${pct(level)}%` }}><span>{level.toFixed(1)} ft</span></div>
+      </div>
+      <div className="scale-ends" aria-hidden="true">
+        <span>▼ {lo.toFixed(1)} · {year(records.low.time, offsetMs)}</span>
+        <span>{year(records.high.time, offsetMs)} · {hi.toFixed(1)} ▲</span>
+      </div>
+    </div>
+  )
 }
 
 export default function HistoryFacts({ history, flood, now, offsetMs }) {
@@ -41,34 +63,32 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
     )
   }
 
-  // One-line summary; the details open on tap (keeps the Now tab short).
-  const headline = !current && !records ? 'History and records'
-    : !current ? `${dir === 'high' ? 'Highest' : 'Lowest'} water on record`
-    : now - current.time < 3 * DAY ? `Nothing unusual: last this ${word} ${relative(current.time, now)}`
-    : `${dir === 'high' ? 'Highest' : 'Lowest'} water since ${date(current)}`
-  const unusual = !current ? Boolean(records) : now - current.time >= 3 * DAY
+  // One-line verdict; the sentences open on tap.
+  const headline = !current && !records ? 'Records'
+    : !current ? `${dir === 'high' ? 'Highest' : 'Lowest'} on record`
+    : now - current.time < 3 * DAY ? 'Nothing unusual'
+    : `${dir === 'high' ? 'Highest' : 'Lowest'} since ${date(current)}`
+  const unusual = current ? now - current.time >= 3 * DAY : Boolean(records)
 
   return (
-    <details className="panel history" open={unusual}>
-      <summary><span className="history-title">📜 History</span> <span className="history-headline">{headline}</span></summary>
+    <details className="panel history">
+      <summary>
+        <span className="history-title">📜 History</span>
+        <span className={unusual ? 'history-headline unusual' : 'history-headline'}>{headline}</span>
+        {records && <RecordScale level={level} records={records} flood={flood} offsetMs={offsetMs} />}
+      </summary>
       <ul className="facts">
-        {currentFact && <li><span className="fact-label">Height of tide now · {ft(level)}</span>{currentFact}</li>}
+        {currentFact && <li>{currentFact}</li>}
         {flood && (
           <li>
-            <span className="fact-label">Coastal flooding · minor flood stage {ft(flood.minor)}</span>
             {lastFlood
-              ? <>🌊 Last reached flood stage {relative(lastFlood.time, now)}, on {date(lastFlood)} ({ft(lastFlood.height)}).</>
-              : records ? <>🌊 Has not reached flood stage since records began in {records.since}.</> : <>🌊 No flood stage on record in recent months.</>}
+              ? <>🌊 Last reached flood stage ({ft(flood.minor)}) {relative(lastFlood.time, now)}, on {date(lastFlood)}: {ft(lastFlood.height)}.</>
+              : records ? <>🌊 Has not reached flood stage ({ft(flood.minor)}) since records began in {records.since}.</> : <>🌊 No flood stage on record in recent months.</>}
           </li>
         )}
-        {records && (
-          <li>
-            <span className="fact-label">Extremes since {records.since}</span>
-            🏆 Highest observed {ft(records.high.height)} on {date(records.high)} · lowest observed {ft(records.low.height)} on {date(records.low)}.
-          </li>
-        )}
+        {records && <li>🏆 Highest observed {ft(records.high.height)} on {date(records.high)} · lowest {ft(records.low.height)} on {date(records.low)}.</li>}
       </ul>
-      <p className="hint small-print">NOAA verified observations, referred to today's chart datum (sea level has risen since the early years).</p>
+      <p className="hint small-print">NOAA verified observations on today's chart datum.</p>
     </details>
   )
 }

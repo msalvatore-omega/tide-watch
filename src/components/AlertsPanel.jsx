@@ -227,8 +227,11 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
                 <span className="ratio">{a.ratio.toFixed(1)}× usual</span>
               </div>
               <div className="when">
-                {hwlw(a.from)} {formatStationTime(a.from.local)} → {hwlw(a.to)} {formatStationTime(a.to.local, { withDay: false })}
-                <small>{a.inProgress ? 'Under way' : formatCountdown(a.from.time - now)} · {ft(a.from.height)} to {ft(a.to.height)}</small>
+                <span>
+                  <span className={a.rising ? 'g-low' : 'g-high'} aria-label={hwlw(a.from)}>{a.rising ? '▼' : '▲'}</span> {formatStationTime(a.from.local)}{' → '}
+                  <span className={a.rising ? 'g-high' : 'g-low'} aria-label={hwlw(a.to)}>{a.rising ? '▲' : '▼'}</span> {formatStationTime(a.to.local, { withDay: false })}
+                </span>
+                <small>{a.inProgress ? 'Under way' : formatCountdown(a.from.time - now)}</small>
               </div>
             </li>
           ))}
@@ -244,8 +247,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
         <summary>⚙️ Alert settings</summary>
         <div className="alert-controls">
           <p className="hint">
-            The usual range here, between one high water and the next low, is {ft(stats.typical)}. Flagging ranges of {ft(threshold)} or more
-            {settings.mode === 'auto' ? ' (the largest 10% this month)' : ''}.
+            Usual range {ft(stats.typical)} · flagging {ft(threshold)} and over{settings.mode === 'auto' ? ' (largest 10%)' : ''}
           </p>
           <label>
             Large-range alerts
@@ -271,8 +273,8 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
           <p className="hint surge-status">{surgeStatus}</p>
           <p className="hint">
             {perStation
-              ? `These levels are saved for ${station.name}; other stations keep their own.`
-              : `Using your most recent levels. Change them here to save a set just for ${station.name}.`}
+              ? `Saved for ${station.name}.`
+              : 'Using your latest levels.'}
           </p>
 
           {NOTIFICATIONS_ENABLED && (
