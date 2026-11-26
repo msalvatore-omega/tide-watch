@@ -774,3 +774,41 @@ footer { margin-top: 10px; }
 .cur-curve .dot-low { fill: var(--low); }
 
 .glance-btn.on .glance-short { color: var(--ink); }
+
+/* --- What's new (version history) --- */
+footer { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+footer .about { flex: 1; min-width: 0; }
+.whatsnew-btn {
+  position: relative; flex: none; margin-left: auto; min-height: 36px; padding: 0 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums;
+}
+.whatsnew-dot { position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; border-radius: 50%; background: #e5484d; border: 2px solid var(--bg); }
+.whatsnew {
+  width: min(560px, calc(100vw - 24px)); max-height: min(82vh, 720px); padding: 0; border: 1px solid var(--border); border-radius: 18px;
+  background: var(--panel); color: var(--ink); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.whatsnew::backdrop { background: rgba(8, 20, 34, 0.55); }
+.whatsnew-head { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.whatsnew-head h2 { margin: 0; font-size: 1.05rem; color: var(--ink); }
+.whatsnew-close { width: 40px; min-height: 40px; border-radius: 50%; border: 0; background: var(--bg); font-size: 1rem; }
+.whatsnew-list { list-style: none; margin: 0; padding: 4px 14px 14px; }
+.whatsnew-list > li { padding: 12px 0; border-top: 1px solid var(--border); }
+.whatsnew-list > li:first-child { border-top: 0; }
+.whatsnew-list > li.unread { margin: 0 -14px; padding: 12px 14px; background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.whatsnew-version { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.whatsnew-version strong { color: var(--ink); font-size: 0.9rem; }
+.whatsnew-tag { padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; }
+.whatsnew-tag.current { background: var(--bg); color: var(--muted); }
+.whatsnew-tag.fresh { background: #c62f35; color: #fff; }
+.whatsnew-list h3 { margin: 4px 0 6px; font-size: 1rem; }
+.whatsnew-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.whatsnew-list ul li { font-size: 0.9rem; line-height: 1.45; }
+.kind-tag { display: inline-block; min-width: 4.6em; margin-right: 4px; padding: 0 6px; border-radius: 6px; font-size: 0.68rem; font-weight: 700; text-align: center; vertical-align: 1px; }
+.kind-tag.new { background: color-mix(in srgb, #1f7a45 16%, var(--panel)); color: #17603a; }
+.kind-tag.improved { background: color-mix(in srgb, var(--brand) 16%, var(--panel)); color: #14507f; }
+.kind-tag.fixed { background: color-mix(in srgb, #d98b1c 20%, var(--panel)); color: #7a4a00; }
+@media (prefers-color-scheme: dark) {
+  .kind-tag.new { color: #8fe0b0; }
+  .kind-tag.improved { color: #a9d6fb; }
+  .kind-tag.fixed { color: #f6c97a; }
+}

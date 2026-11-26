@@ -11,6 +11,7 @@ import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
 import Instruments from './components/Instruments.jsx'
 import TideDial from './components/TideDial.jsx'
+import WhatsNew from './components/WhatsNew.jsx'
 import WeekTable from './components/WeekTable.jsx'
 import Planner from './components/Planner.jsx'
 import Currents from './components/Currents.jsx'
@@ -380,8 +381,8 @@ function Tidely() {
       {tide && tab === 'currents' && <Currents key={stationId} events={events} now={now} station={station} />}
       </div>
 
-      {tide && (
-        <footer>
+      <footer>
+        {tide && (
           <details className="about">
             <summary aria-label="About this data">ⓘ <span>{formatAtStation(now, tide.offsetMs)} station time</span></summary>
             <p>
@@ -391,8 +392,9 @@ function Tidely() {
             </p>
             <button type="button" className="link" onClick={toggleClock}>Use the {clock24 ? '12' : '24'}-hour clock</button>
           </details>
-        </footer>
-      )}
+        )}
+        <WhatsNew />
+      </footer>
     </main>
   )
 }

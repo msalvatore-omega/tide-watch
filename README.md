@@ -57,6 +57,15 @@ saved on the device, so predictions, the Week and Plan tabs work with no signal.
 `NOTIFICATIONS_ENABLED = true` in `src/config.js` to bring them back; background alerts
 also need the server (below) deployed.
 
+## Version history
+
+The 🕘 button at the bottom of every page opens "What's new": every version of Tidely
+and what changed, written for users. It reads from `src/changelog.js`.
+
+**Every user-visible change gets an entry there, in the same commit**, and `version` in
+`package.json` is bumped to match. `npm test` fails if the two disagree or an entry is
+malformed, so an undocumented release cannot deploy. The full rule is in `CLAUDE.md`.
+
 ## Run locally
 
 ```bash
@@ -65,7 +74,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 59 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing
+npm test        # 62 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing, changelog
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.
@@ -130,6 +139,7 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/currents.js` | Tidal-current state from slack/max events |
 | `src/briefing.js` | "At a glance" summary and preset answers (rules, no AI) |
 | `src/ai.js` | Client for the optional AI question box |
+| `src/changelog.js` | Version history shown to users (update with every change) |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
 | `src/components/` | Beach scene, tide dial, instruments, chart, week strips, planner timeline, currents dial, history scale, station picker, alerts |
 | `src/push.js` | Registers the device with the alerts server |
