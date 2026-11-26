@@ -1072,3 +1072,5 @@ footer .about { flex: 1; min-width: 0; }
 .folds > details.history > summary::after { content: '›'; color: var(--muted); font-size: 1.3rem; }
 .folds > details.history[open] > summary::after { transform: rotate(90deg); }
 @media (prefers-color-scheme: dark) { :root { --now-text: #ff9a9e; } }
+.hero-moon { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: none; }
+.hero-moon small { font-size: 0.7rem; color: var(--muted); }

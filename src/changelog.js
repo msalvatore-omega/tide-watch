@@ -11,6 +11,14 @@
 
 export const CHANGELOG = [
   {
+    version: '2.1.0',
+    date: '2026-11-26',
+    title: 'The moon on the main graphic',
+    changes: [
+      { kind: 'new', text: 'Tonight\'s moon is drawn at its true phase at the top of the main graphic, with a note when the tides are springs or neaps.' },
+    ],
+  },
+  {
     version: '2.0.0',
     date: '2026-11-26',
     title: 'A calmer, simpler Tidely',

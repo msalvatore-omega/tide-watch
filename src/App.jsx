@@ -8,7 +8,7 @@ import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
 import HistoryFacts from './components/HistoryFacts.jsx'
 import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
-import Instruments, { freshWeather } from './components/Instruments.jsx'
+import Instruments, { freshWeather, MoonDisc } from './components/Instruments.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
 import WeekTable from './components/WeekTable.jsx'
 import Planner from './components/Planner.jsx'
@@ -245,6 +245,7 @@ function Tidely() {
       detail: `${a.event} ${a.onset && a.onset > now ? `from ${formatAtStation(a.onset, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : `until ${formatAtStation(a.ends, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`} (National Weather Service). ${text.length > 420 ? `${text.slice(0, 420)}…` : text}`,
     })
   }
+  const moon = moonPhase(now)
   const isStand = live?.trend === 'steady'
   const heroState = isStand ? { glyph: '◆', text: 'Stand', cls: 'stand' } : view?.rising ? { glyph: '▲', text: 'Flood tide', cls: 'flood' } : { glyph: '▼', text: 'Ebb tide', cls: 'ebb' }
   const shownBadge = badges.find((b) => b.id === (badgeOpen === undefined ? 'flood' : badgeOpen)) ?? null
@@ -362,6 +363,10 @@ function Tidely() {
                     ? <>● observed {formatAtStation(live.time, tide.offsetMs)}{Math.abs(live.diff ?? 0) >= 0.05 ? ` · ${hDiff(live.diff)} on prediction` : ''}</>
                     : '○ predicted'}
                 </span>
+              </div>
+              <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}.`}>
+                <MoonDisc moon={moon} size={40} />
+                <small aria-hidden="true">{moon.tides === 'spring' ? 'springs' : moon.tides === 'neap' ? 'neaps' : `${Math.round(moon.illumination * 100)}%`}</small>
               </div>
               <Explain id="scene" />
             </div>
