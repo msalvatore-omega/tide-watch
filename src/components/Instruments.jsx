@@ -1,65 +1,16 @@
-// Conditions as instruments rather than text: wind compass, temperatures, barometer
-// with its trend, a daylight bar and the moon drawn at its phase.
-import { formatAtStation, beaufort } from '../tides.js'
+// Sun and moon as a picture: a 24-hour daylight bar with a marker for now, and the moon
+// drawn at its phase. (Wind, temperatures and barometer are drawn on the scene itself.)
+import { formatAtStation } from '../tides.js'
+import { Explain } from './Explain.jsx'
 
 const MAX_AGE_MS = 3 * 3600e3 // don't show old readings (e.g. saved data while offline) as current
 
-/** Compass rose with an arrow flying in from the direction the wind blows from. */
-function WindCompass({ wind }) {
-  const bf = beaufort(wind.knots)
-  const deg = wind.deg ?? 0
-  return (
-    <div className="inst" role="img" aria-label={`Wind ${wind.dir ?? ''} ${Math.round(wind.knots)} knots, force ${bf.force}, ${bf.name}${wind.gust != null ? `, gusting ${Math.round(wind.gust)}` : ''}`}>
-      <svg viewBox="0 0 80 80" aria-hidden="true">
-        <circle cx="40" cy="40" r="33" className="inst-ring" />
-        {[0, 90, 180, 270].map((a) => <line key={a} x1="40" y1="7" x2="40" y2="13" className="inst-tick" transform={`rotate(${a} 40 40)`} />)}
-        <text x="40" y="1" textAnchor="middle" className="inst-n">N</text>
-        {wind.deg != null && (
-          <g transform={`rotate(${deg} 40 40)`}>
-            {/* tail on the rim at the wind's origin, head toward the centre */}
-            <line x1="40" y1="3" x2="40" y2="12" className="inst-arrow" />
-            <polygon points="40,21 34.5,11 45.5,11" className="inst-arrow-head" />
-          </g>
-        )}
-        <text x="40" y="49" textAnchor="middle" className="inst-big">{Math.round(wind.knots)}</text>
-        <text x="40" y="60" textAnchor="middle" className="inst-unit">kt</text>
-      </svg>
-      <div className="inst-cap" aria-hidden="true">{wind.dir ?? 'Wind'} · F{bf.force}{wind.gust != null ? ` · G${Math.round(wind.gust)}` : ''}</div>
-    </div>
-  )
-}
-
-function Temps({ sea, air }) {
-  return (
-    <div className="inst" role="img" aria-label={`Sea ${sea ? `${Math.round(sea.f)} degrees` : 'not reported'}, air ${air ? `${Math.round(air.f)} degrees` : 'not reported'} Fahrenheit`}>
-      <div className="inst-temps" aria-hidden="true">
-        <div><span className="inst-temp-icon">🌊</span><span className="inst-big-html">{sea ? `${Math.round(sea.f)}°` : '—'}</span></div>
-        <div><span className="inst-temp-icon">🌬️</span><span className="inst-mid-html">{air ? `${Math.round(air.f)}°` : '—'}</span></div>
-      </div>
-      <div className="inst-cap" aria-hidden="true">Sea · Air °F</div>
-    </div>
-  )
-}
-
-function Barometer({ pressure }) {
-  const c = pressure.change3h
-  const trend = c == null ? null : c > 1 ? 'rising' : c < -1 ? 'falling' : 'steady'
-  const rot = trend === 'rising' ? -40 : trend === 'falling' ? 40 : 0
-  return (
-    <div className="inst" role="img" aria-label={`Barometer ${Math.round(pressure.mb)} millibars${trend ? `, ${trend}` : ''}`}>
-      <svg viewBox="0 0 80 80" aria-hidden="true">
-        {trend && (
-          <g transform={`rotate(${rot} 40 22)`} className={`inst-trend ${trend}`}>
-            <line x1="24" y1="22" x2="48" y2="22" />
-            <polygon points="56,22 46,16 46,28" />
-          </g>
-        )}
-        <text x="40" y="56" textAnchor="middle" className="inst-mid">{Math.round(pressure.mb)}</text>
-        <text x="40" y="68" textAnchor="middle" className="inst-unit">mb</text>
-      </svg>
-      <div className="inst-cap" aria-hidden="true">Baro{trend ? ` · ${trend}` : ''}</div>
-    </div>
-  )
+/** Only readings recent enough to call "current". */
+export function freshWeather(weather, now) {
+  if (!weather) return null
+  const fresh = (x) => (x && (!x.time || now - x.time < MAX_AGE_MS) ? x : null)
+  const out = { wind: fresh(weather.wind), pressure: fresh(weather.pressure), waterTemp: fresh(weather.waterTemp), airTemp: fresh(weather.airTemp) }
+  return out.wind || out.pressure || out.waterTemp || out.airTemp ? out : null
 }
 
 /** The moon as it looks tonight: lit part drawn from its age in the lunar month. */
@@ -105,25 +56,12 @@ function DaylightBar({ sun, moon, now, offsetMs }) {
   )
 }
 
-export default function Instruments({ weather, source, sun, moon, offsetMs, now }) {
-  const fresh = (x) => (x && (!x.time || now - x.time < MAX_AGE_MS) ? x : null)
-  const wind = fresh(weather?.wind)
-  const pressure = fresh(weather?.pressure)
-  const sea = fresh(weather?.waterTemp)
-  const air = fresh(weather?.airTemp)
-  const any = wind || pressure || sea || air
-
+export default function Instruments({ source, sun, moon, offsetMs, now }) {
   return (
-    <section className="instruments" aria-label="Conditions at the station">
-      {any && (
-        <div className="inst-row">
-          {wind && <WindCompass wind={wind} />}
-          {(sea || air) && <Temps sea={sea} air={air} />}
-          {pressure && <Barometer pressure={pressure} />}
-        </div>
-      )}
+    <section className="instruments" aria-label="Sun and moon">
       <DaylightBar sun={sun} moon={moon} now={now} offsetMs={offsetMs} />
-      {source && any && <p className="cond-source">Observations: {source}</p>}
+      <Explain id="sun" className="corner" />
+      {source && <p className="cond-source">Weather on the picture: {source}</p>}
     </section>
   )
 }

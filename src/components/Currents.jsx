@@ -3,7 +3,8 @@
 // The plain table is one tap away.
 import { useEffect, useMemo, useState } from 'react'
 import { fetchCurrentStations, fetchCurrents, distanceMiles } from '../noaa.js'
-import { currentNow, speedAt, compass } from '../currents.js'
+import { currentNow, speedAt, compass, windAgainstCurrent } from '../currents.js'
+import { Explain } from './Explain.jsx'
 import { useWidth } from './useWidth.js'
 import { offsetAt, formatAtStation, formatCountdown, stationDate, formatDay, nmText } from '../tides.js'
 
@@ -12,7 +13,7 @@ const loadChoices = () => { try { return JSON.parse(localStorage.getItem(CHOICE_
 
 const LABEL = { slack: 'Slack water', flood: 'Max flood', ebb: 'Max ebb' }
 
-export default function Currents({ station, events: tideEvents, now }) {
+export default function Currents({ station, events: tideEvents, now, wind }) {
   const [all, setAll] = useState(null)
   const [choice, setChoice] = useState(() => loadChoices()[station?.id] ?? null)
   const [data, setData] = useState({ status: 'idle' })
@@ -70,12 +71,15 @@ export default function Currents({ station, events: tideEvents, now }) {
     return d == null ? '' : `· set ${compass(d)}`
   }
 
+  const against = cur && cur.state !== 'slack' && wind ? windAgainstCurrent(wind.deg, wind.knots, cur.dir, cur.knots) : null
+
   const maxKnots = Math.max(0.1, ...(events ?? []).map((e) => e.knots))
 
   return (
     <section className="panel currents">
       <div className="panel-head">
         <h2>Currents</h2>
+        <Explain id="currents" />
         <select className="cur-select" value={selected.id} onChange={(e) => pick(e.target.value)} aria-label="Current station">
           {nearby.map((s) => (
             <option key={s.id} value={s.id}>{s.name} · {nmText(s.miles)}{s.depth != null ? ` · ${Math.round(s.depth)} ft` : ''}</option>
@@ -99,6 +103,13 @@ export default function Currents({ station, events: tideEvents, now }) {
               {cur.nextSlack && <div className="cur-next">◆ slack {time(cur.nextSlack.time)} · {formatCountdown(cur.nextSlack.time - now).replace('in ', '')}</div>}
             </div>
           </div>
+
+          {against && (
+            <p className={`wind-tide${against.strong ? ' strong' : ''}`} role="status">
+              <span aria-hidden="true">🌬️⇄🌊</span> <strong>Wind against tide.</strong> {wind.dir} wind {Math.round(wind.knots)} kt is blowing against the {cur.state} current
+              ({cur.knots.toFixed(1)} kt setting {compass(cur.dir)}): expect a shorter, steeper sea than the wind alone would raise{cur.nextSlack ? `, easing toward slack water at ${time(cur.nextSlack.time)}` : ''}.
+            </p>
+          )}
 
           <CurrentCurve events={events} now={now} time={time} />
 
@@ -213,6 +224,9 @@ function CurrentCurve({ events, now, time }) {
         </svg>
       )}
       <p className="legend-line" aria-hidden="true">
+        <span><i className="lg dot-high-bg" /> max flood</span>
+        <span><i className="lg dot-low-bg" /> max ebb</span>
+        <span><i className="lgl nowl" /> now</span>
         <span><i className="lg cur-slack-bg" /> slack {marks.filter((e) => e.type === 'slack' && e.time > now).slice(0, 4).map((e) => time(e.time)).join(' · ')}</span>
       </p>
     </div>

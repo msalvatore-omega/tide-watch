@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchAllStations, fetchLiveStations, distanceMiles, lookupZip } from '../noaa.js'
 import { nmText } from '../tides.js'
+
+const StationMap = lazy(() => import('./StationMap.jsx')) // the map library loads only when asked for
 
 /**
  * Search ~3,500 NOAA tide stations by name, state, ID or zip code, or find the nearest.
  * Each result shows whether it has a live gauge (measured water) or forecast only,
  * and can be starred as a favorite right from the list.
  */
-export default function StationPicker({ onPick, onCancel, favorites = [], isFavorite = () => false, onToggleFavorite }) {
+export default function StationPicker({ onPick, onCancel, favorites = [], isFavorite = () => false, onToggleFavorite, near = null }) {
+  const [showMap, setShowMap] = useState(false)
   const [stations, setStations] = useState(null)
   const [liveIds, setLiveIds] = useState(null)
   const [query, setQuery] = useState('')
@@ -109,12 +112,21 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
           aria-label="Search tide stations"
         />
         <button type="button" className="secondary" onClick={findNearMe} disabled={busy}>📍 Nearest</button>
+        <button type="button" className={showMap ? 'secondary on' : 'secondary'} aria-pressed={showMap} onClick={() => { setShowMap(!showMap); load().catch(() => {}) }}>🗺️ Map</button>
       </div>
 
       <label className="check live-filter">
         <input type="checkbox" checked={liveOnly} onChange={(e) => setLiveOnly(e.target.checked)} disabled={!liveIds} />
         Tide gauges only <span className="hint-inline">(observed water level, not just predictions)</span>
       </label>
+
+      {showMap && (
+        <Suspense fallback={<p className="hint">Loading the map…</p>}>
+          {stations
+            ? <StationMap stations={stations} liveIds={liveIds} liveOnly={liveOnly} center={origin ?? near} onPick={onPick} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />
+            : <p className="hint">Loading stations…</p>}
+        </Suspense>
+      )}
 
       {message && <p className="hint">{message}</p>}
       {!message && showingFavorites && favorites.length > 0 && <p className="hint">★ Your favorites</p>}

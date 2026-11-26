@@ -1,6 +1,6 @@
 import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
-import { tideNow, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, setClock24, isClock24, ft } from './tides.js'
+import { tideNow, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, hDiff, tempText, setClock24, isClock24, setMetric, isMetric, ft } from './tides.js'
 import { useSixMinute, useConditions, useNearestLiveGauge, useOnline, liveNow, isSurge, diffText } from './live.js'
 import { isNight, sunTimes, moonPhase } from './astro.js'
 import { useFavorites } from './favorites.js'
@@ -9,7 +9,7 @@ import HistoryFacts from './components/HistoryFacts.jsx'
 import TideScene from './components/TideScene.jsx'
 import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
-import Instruments from './components/Instruments.jsx'
+import Instruments, { freshWeather } from './components/Instruments.jsx'
 import TideDial from './components/TideDial.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
 import WeekTable from './components/WeekTable.jsx'
@@ -17,6 +17,13 @@ import Planner from './components/Planner.jsx'
 import Currents from './components/Currents.jsx'
 import Glance from './components/Glance.jsx'
 import AlertsPanel, { useSwingAlerts } from './components/AlertsPanel.jsx'
+import { Explain, Glossary } from './components/Explain.jsx'
+import Marine, { useMarine } from './components/Marine.jsx'
+import { useMyWater, RuleLights, Berth, Rules } from './components/MyWater.jsx'
+import Tour from './components/Tour.jsx'
+import Share from './components/Share.jsx'
+import { heightContext, agreement } from './insight.js'
+import { currentAlerts } from './nws.js'
 
 const DEFAULT_STATION = '8574680' // Baltimore (Fort McHenry), MD
 const STORAGE_KEY = 'tidewatch.station'
@@ -78,6 +85,14 @@ function Tidely() {
     setClock(!clock24)
     write('tidely.clock', clock24 ? '12' : '24')
   }
+  // Feet and °F, or metres and °C. (Speeds stay in knots, pressure in millibars.)
+  const [metric, setUnits] = useState(isMetric)
+  const toggleUnits = () => {
+    setMetric(!metric)
+    setUnits(!metric)
+    write('tidely.units', metric ? 'us' : 'metric')
+  }
+  const [tourRequest, setTourRequest] = useState(0)
   const online = useOnline()
 
   // Save favorites' predictions in the background so they're available offline.
@@ -151,7 +166,13 @@ function Tidely() {
     : nearestGauge ? { id: nearestGauge.id, name: `${nearestGauge.name} (${nmText(nearestGauge.miles)})` } : null
   const weather = useConditions(weatherGauge?.id ?? null)
 
+  const wx = freshWeather(weather.status === 'ok' ? weather.data : null, now) // current conditions for the picture
+
   const tide = events ? tideNow(events, now) : null
+  const marine = useMarine(station, online)
+  const marineAlerts = marine?.alerts ? currentAlerts(marine.alerts, now) : []
+  const my = useMyWater(stationId, events)
+  const agree = hasGauge ? agreement(sixData, now) : null
   const flood = useFloodLevels(stationId)
   const todayStart = tide ? new Date(Date.parse(`${stationDate(now, tide.offsetMs)}T00:00:00Z`) - tide.offsetMs) : null
   const historyFacts = useHistoryFacts({ stationId, enabled: Boolean(live), level: live?.height, observed: sixData?.observed, flood, todayStart, offsetMs: tide?.offsetMs })
@@ -205,7 +226,7 @@ function Tidely() {
     badges.push({
       id: 'surge',
       icon: '🌬️',
-      label: `${live.diff > 0 ? '+' : '−'}${Math.abs(live.diff).toFixed(1)} ft`,
+      label: hDiff(live.diff),
       detail: `Water is ${diffText(live.diff)}: observed ${ft(live.height)}, predicted ${ft(live.predicted)}. ${live.diff > 0 ? 'Wind set-up or storm surge.' : 'Offshore wind is blowing the water out.'}`,
     })
   }
@@ -253,6 +274,19 @@ function Tidely() {
                 {favs.isFavorite(station.id) ? '★' : '☆'}
               </button>
             )}
+            {station && tide && view && (
+              <Share
+                url={location.href}
+                text={`${stationLabel}: height of tide ${ft(view.height)}, ${live?.trend === 'steady' ? 'at stand' : view.rising ? 'flooding' : 'ebbing'}. High water ${formatStationTime(tide.nextHigh.local)} (${ft(tide.nextHigh.height)}), low water ${formatStationTime(tide.nextLow.local)} (${ft(tide.nextLow.height)}).`}
+                card={{
+                  title: stationLabel,
+                  big: ft(view.height),
+                  state: live?.trend === 'steady' ? '◆ Stand' : view.rising ? '▲ Flood tide' : '▼ Ebb tide',
+                  lines: [`▲ High water ${formatStationTime(tide.nextHigh.local)} · ${ft(tide.nextHigh.height)}`, `▼ Low water ${formatStationTime(tide.nextLow.local)} · ${ft(tide.nextLow.height)}`],
+                  footer: `${live ? 'Observed' : 'Predicted'} ${formatAtStation(now, tide.offsetMs)} · Tidely · NOAA data`,
+                }}
+              />
+            )}
           </div>
         )}
       </header>
@@ -274,6 +308,7 @@ function Tidely() {
           onToggleFavorite={favs.toggle}
           onPick={(id) => { setStationId(id); setPicking(false) }}
           onCancel={() => setPicking(false)}
+          near={station?.lat != null ? { lat: station.lat, lng: station.lng } : null}
         />
       )}
 
@@ -311,14 +346,23 @@ function Tidely() {
         <>
           <section className="scene-wrap">
             <TideScene
-              fraction={view.fraction}
+              height={view.height}
+              min={view.min}
+              max={view.max}
               rising={view.rising}
+              stand={live?.trend === 'steady'}
+              observed={Boolean(live)}
               night={hasCoords ? isNight(now, station.lat, station.lng, tide.offsetMs) : tide.stationHour < 6.5 || tide.stationHour >= 18.5}
-              highLabel={`HW ${ft(view.max)}`}
-              lowLabel={`LW ${ft(view.min)}`}
-              floodFraction={flood && view.max !== view.min ? (flood.minor - view.min) / (view.max - view.min) : null}
-              floodLabel={flood ? `Flood ${ft(flood.minor)}` : ''}
+              nextHigh={{ height: tide.nextHigh.height, label: formatStationTime(tide.nextHigh.local, { withDay: false }) }}
+              nextLow={{ height: tide.nextLow.height, label: formatStationTime(tide.nextLow.local, { withDay: false }) }}
+              flood={flood?.minor ?? null}
+              weather={wx}
             />
+            {wx && <SceneWeather wx={wx} />}
+            <Explain id="scene" className="corner" />
+          </section>
+
+          <section className="badge-wrap">
             {badges.length > 0 && (
               <div className="scene-badges">
                 {badges.map((b) => (
@@ -331,7 +375,11 @@ function Tidely() {
             {shownBadge && <p className={`badge-detail ${shownBadge.id}`} role={shownBadge.id === 'flood' ? 'alert' : 'status'}>{shownBadge.detail}</p>}
           </section>
 
-          <TideDial tide={tide} height={view.height} rising={view.rising} live={live} now={now} note={gaugeNote} />
+          {marineAlerts.length > 0 && <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />}
+
+          <TideDial tide={tide} height={view.height} rising={view.rising} live={live} now={now} note={gaugeNote} context={heightContext(view.height, events)} />
+
+          <RuleLights my={my} events={events} now={now} heightNow={view.height} onOpen={() => setTab('plan')} />
 
           <Glance
             key={stationId}
@@ -349,17 +397,28 @@ function Tidely() {
           />
 
           <Instruments
-            weather={weather.status === 'ok' ? weather.data : null}
             now={now}
-            source={weatherGauge?.name}
+            source={wx ? weatherGauge?.name : null}
             sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
             moon={moonPhase(now)}
             offsetMs={tide.offsetMs}
           />
 
+          {marineAlerts.length === 0 && <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />}
+
           <section className="panel">
-            <h2>{hasGauge ? 'Observed vs predicted' : 'Predicted tide'}</h2>
+            <div className="panel-head">
+              <h2>{hasGauge ? 'Observed vs predicted' : 'Predicted tide'}</h2>
+              <Explain id="chart" />
+            </div>
             <TideChart events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
+            {agree && (
+              <p className={`agree ${agree.grade}`}>
+                <span className="agree-dot" aria-hidden="true" />
+                {agree.grade === 'close' ? 'Predictions holding well' : agree.grade === 'fair' ? 'Predictions roughly holding' : 'Predictions well off today'}
+                : last 24 h the gauge averaged {ft(agree.avg)} from prediction (most {ft(agree.max)}{Math.abs(agree.bias) >= 0.1 ? `, mostly ${agree.bias > 0 ? 'above' : 'below'}` : ''}).
+              </p>
+            )}
           </section>
 
           {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
@@ -377,8 +436,14 @@ function Tidely() {
       )}
 
       {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} flood={flood} />}
-      {tide && tab === 'plan' && <Planner events={events} now={now} station={station} live={live} />}
-      {tide && tab === 'currents' && <Currents key={stationId} events={events} now={now} station={station} />}
+      {tide && view && tab === 'plan' && (
+        <>
+          <Rules key={`rules-${stationId}`} my={my} events={events} now={now} heightNow={view.height} />
+          <Planner events={events} now={now} station={station} live={live} />
+          <Berth key={`berth-${stationId}-${metric}`} my={my} events={events} now={now} heightNow={view.height} observed={Boolean(live)} />
+        </>
+      )}
+      {tide && tab === 'currents' && <Currents key={stationId} events={events} now={now} station={station} wind={wx?.wind ?? null} />}
       </div>
 
       <footer>
@@ -386,17 +451,47 @@ function Tidely() {
           <details className="about">
             <summary aria-label="About this data">ⓘ <span>{formatAtStation(now, tide.offsetMs)} station time</span></summary>
             <p>
-              Heights in feet above chart datum (MLLW). Times are the station's own.{' '}
+              Heights in {metric ? 'metres' : 'feet'} above chart datum (MLLW). Times are the station's own.{' '}
               <a href={`https://tidesandcurrents.noaa.gov/stationhome.html?id=${stationId}`} target="_blank" rel="noreferrer">NOAA data</a>
               {hasGauge ? '; gauge observations are preliminary, every 6 minutes' : ''}. Not for navigation.
             </p>
-            <button type="button" className="link" onClick={toggleClock}>Use the {clock24 ? '12' : '24'}-hour clock</button>
+            <div className="about-tools">
+              <button type="button" className="link" onClick={toggleClock}>🕒 Use the {clock24 ? '12' : '24'}-hour clock</button>
+              <button type="button" className="link" onClick={toggleUnits}>📏 Use {metric ? 'feet and °F' : 'metres and °C'}</button>
+              <Glossary />
+              <button type="button" className="link" onClick={() => setTourRequest((n) => n + 1)}>👋 Show the tour</button>
+            </div>
           </details>
         )}
         <WhatsNew />
+        <Tour request={tourRequest} />
       </footer>
     </main>
   )
 }
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** Current conditions in a strip across the top of the picture. */
+function SceneWeather({ wx }) {
+  const p = wx.pressure
+  const trend = p?.change3h == null ? '' : p.change3h > 1 ? '↗' : p.change3h < -1 ? '↘' : '→'
+  return (
+    <div className="scene-wx" aria-hidden="true">
+      {wx.wind && (
+        <span>
+          {wx.wind.deg != null && (
+            // arrow flying with the wind (north up): it points where the wind is going
+            <svg viewBox="-10 -10 20 20" className="wx-arrow" style={{ transform: `rotate(${wx.wind.deg + 180}deg)` }}>
+              <line x1="0" y1="7" x2="0" y2="-3" /><polygon points="0,-9 -5,-1 5,-1" />
+            </svg>
+          )}
+          {wx.wind.dir} {Math.round(wx.wind.knots)} kt
+        </span>
+      )}
+      {wx.airTemp && <span>Air {tempText(wx.airTemp.f)}</span>}
+      {wx.waterTemp && <span>Sea {tempText(wx.waterTemp.f)}</span>}
+      {p && <span>{Math.round(p.mb)} mb {trend}</span>}
+    </div>
+  )
+}

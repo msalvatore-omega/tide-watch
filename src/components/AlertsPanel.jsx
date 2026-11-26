@@ -1,3 +1,4 @@
+import { Explain } from './Explain.jsx'
 import { useEffect, useState } from 'react'
 import { findAlerts, alertsToICS } from '../alerts.js'
 import { formatStationTime, formatCountdown, hwlw, ft } from '../tides.js'
@@ -141,7 +142,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
 
     notify(
       `🌬️ Water ${diffText(readingDiff)} at ${station.name}`,
-      `The tide gauge reads ${Math.abs(readingDiff).toFixed(1)} ft ${dir} prediction: ${dir === 'above' ? 'wind set-up or storm surge' : 'offshore wind blowing the water out'}.`,
+      `The tide gauge reads ${ft(Math.abs(readingDiff))} ${dir} prediction: ${dir === 'above' ? 'wind set-up or storm surge' : 'offshore wind blowing the water out'}.`,
       `${station.id}:surge`,
     )
       .then(() => {
@@ -211,6 +212,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
     <section className="panel alerts">
       <div className="panel-head">
         <h2>Large ranges · next 7 days</h2>
+        <Explain id="ranges" />
         {alerts.length > 0 && (
           <button type="button" className="link small" onClick={downloadCalendar}>📅 Add to calendar</button>
         )}
@@ -256,7 +258,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
               onChange={(e) => setSettings(e.target.value === 'auto' ? { ...settings, mode: 'auto' } : { ...settings, mode: 'custom', feet: Number(e.target.value) })}
             >
               <option value="auto">Unusually large for this station</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((f) => <option key={f} value={f}>Ranges of {f} ft or more</option>)}
+              {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((f) => <option key={f} value={f}>Ranges of {ft(f)} or more</option>)}
             </select>
           </label>
 
@@ -266,7 +268,7 @@ export default function AlertsPanel({ station, now, alerts, stats, threshold, se
               value={settings.surgeFeet == null ? 'off' : String(settings.surgeFeet)}
               onChange={(e) => setSettings({ ...settings, surgeFeet: e.target.value === 'off' ? null : Number(e.target.value) })}
             >
-              {SURGE_CHOICES.map((f) => <option key={f} value={f}>{f} ft or more off prediction</option>)}
+              {SURGE_CHOICES.map((f) => <option key={f} value={f}>{ft(f)} or more off prediction</option>)}
               <option value="off">Off</option>
             </select>
           </label>

@@ -117,7 +117,25 @@ export function formatCountdown(ms) {
   return `in ${h}h ${m}m`
 }
 
-export const ft = (v) => `${v.toFixed(1)} ft`
+// Height units. Everything is stored and calculated in feet (as NOAA supplies it);
+// these helpers turn a value in feet into text in the user's chosen unit.
+const M_PER_FT = 0.3048
+let metric = false
+export const setMetric = (on) => { metric = Boolean(on) }
+export const isMetric = () => metric
+/** A height with its unit: "1.8 ft" or "0.55 m". */
+const noNegZero = (t) => t.replace(/^-(0(\.0+)?)$/, '$1')
+export const ft = (v) => `${hNum(v)} ${metric ? 'm' : 'ft'}`
+/** The number alone, in the chosen unit: "1.8" or "0.55". */
+export const hNum = (v) => noNegZero(metric ? (v * M_PER_FT).toFixed(2) : v.toFixed(1))
+export const hUnit = () => (metric ? 'm' : 'ft')
+/** A height typed by the user in their unit → feet, and feet → the number to show in an input. */
+export const toFeet = (v) => (metric ? v / M_PER_FT : v)
+export const fromFeet = (f) => (metric ? Math.round(f * M_PER_FT * 100) / 100 : Math.round(f * 10) / 10)
+/** A signed difference: "+1.3 ft" / "−0.40 m". */
+export const hDiff = (d) => `${d > 0 ? '+' : '−'}${ft(Math.abs(d))}`
+/** A temperature given in °F, in the chosen unit: "62°F" or "17°C". */
+export const tempText = (f) => (metric ? `${Math.round(((f - 32) * 5) / 9)}°C` : `${Math.round(f)}°F`)
 
 /** A one-line seaman's read of the state of the tide. */
 export function tideMood({ fraction, rising }) {

@@ -12,7 +12,8 @@ Tidely speaks the way tide tables and mariners do: **high water / low water** (H
 **flood** and **ebb**, **stand**, **springs** and **neaps**, **tidal range**, **observed**
 vs **predicted**, heights above **chart datum (MLLW)**, wind in **knots** with **Beaufort
 force**, current **set** (degrees true) and **drift**, distances in **nautical miles**,
-and a **24-hour clock** (a 12-hour option is in the footer). "Flood stage" and "coastal
+and a **24-hour clock** (a 12-hour option is in the footer). Heights are in feet and
+temperatures in °F by default; metres and °C can be chosen under ⓘ (speeds stay in knots). "Flood stage" and "coastal
 flooding" always mean water over the land, to keep them apart from the flood tide.
 
 ## Features
@@ -21,18 +22,25 @@ Tidely is built to be read at a glance: instruments and charts first, words on d
 Every graphic carries a spoken description for screen readers.
 
 **🌊 Now**
-- **Beach scene** with the water at the present height of tide, the flood-stage mark on
-  the tide pole, and warning badges (coastal flooding, surge, large range) you can tap.
+- **Beach scene** with the water against a numbered tide staff, a tag for the height
+  now, dashed lines for the next HW and LW, the flood-stage line, and the present
+  conditions (wind, air and sea temperature, barometer) across the top. Warning badges
+  (coastal flooding, surge, large range) sit beneath it.
+- **Marine warnings and forecast** from the National Weather Service for the station's
+  waters (never served from the offline cache, so an old warning is not shown as current).
 - **Tide dial**: an arc from low water to high water with a marker for the height now
   (observed when the station has a gauge, otherwise predicted), flood/ebb/stand, and
-  the next LW and HW with countdowns.
+  the next LW and HW with countdowns, and a line saying how the height compares with a
+  usual high and low water here.
+- **By-your-rules lights**: launch, fish the turn, walk the flats (and depth at your
+  berth once set), from figures the user chooses on the Plan tab.
 - **Quick answers**: icon buttons for a written summary and common questions (lowest
   water this weekend, coastal flooding this week, extremes, next daylight low water).
   Rules, no AI; an optional AI question box appears when the server has a key.
-- **Instruments**: wind compass (knots, Beaufort), sea/air temperature, barometer with
-  trend arrow, a daylight bar, and the moon drawn at its phase (springs/neaps).
+- **Sun and moon**: a daylight bar and the moon drawn at its phase (springs/neaps).
 - **Chart**: observed water over the prediction, 9 hours back to 24 ahead, with flood
-  stage drawn in.
+  stage drawn in, a legend, and a note on how closely the gauge has followed the
+  predictions over the last 24 hours.
 - **History scale**: lowest to highest water on record with today and flood stage
   marked; the dated facts open on tap.
 - **Large ranges** for the week with per-station alert levels and calendar export.
@@ -42,11 +50,18 @@ ringed); the full table is one tap away and is what prints.
 
 **🧭 Plan**: drag a line on the tide curve to set a height; each day is a 24-hour bar
 with the usable windows filled in. Above/below, daylight-only, tap a window for times.
+Also **My berth** (charted depth + draft → depth now, under-keel clearance, when the
+boat is predicted to touch bottom) and the rules behind the lights.
 
 **🌀 Currents**: a compass dial showing set and drift now, and a flood/ebb curve for
-24 hours with slack water and the maxima marked; table on demand.
+24 hours with slack water and the maxima marked; table on demand. Flags **wind against
+tide** when the gauge's wind opposes the current.
 
-Also: search by zip code, name or nearest, with tide-gauge badges; ★ favorites;
+**Help**: a first-visit tour, a ? on every panel (how to read it, and its terms), tappable
+terms, and a glossary under ⓘ.
+
+Also: search by zip code, name, nearest or on a **map** (OpenStreetMap, loaded on
+demand), with tide-gauge badges; ★ favorites; a **share** button (picture card + link);
 installable to a phone's home screen; dark mode; no axe WCAG 2 AA violations;
 shareable links (`?station=8574680&tab=week`).
 
@@ -139,6 +154,9 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/currents.js` | Tidal-current state from slack/max events |
 | `src/briefing.js` | "At a glance" summary and preset answers (rules, no AI) |
 | `src/ai.js` | Client for the optional AI question box |
+| `src/insight.js` | Height in context, gauge-vs-prediction agreement, berth depth, by-your-rules lights |
+| `src/nws.js` | National Weather Service marine warnings and forecast |
+| `src/glossary.js` | Term definitions and the "how to read this" text for each panel |
 | `src/changelog.js` | Version history shown to users (update with every change) |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
 | `src/components/` | Beach scene, tide dial, instruments, chart, week strips, planner timeline, currents dial, history scale, station picker, alerts |

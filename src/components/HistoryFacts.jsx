@@ -1,7 +1,8 @@
 // "How unusual is this?" as a picture: a scale from the lowest to the highest water
 // ever observed here, with today's height and flood stage marked. The sentences
 // (last time this high/low, last flood, record dates) open on tap.
-import { ft } from '../tides.js'
+import { Explain } from './Explain.jsx'
+import { ft, hNum } from '../tides.js'
 
 const DAY = 86400e3
 
@@ -29,12 +30,12 @@ function RecordScale({ level, records, flood, offsetMs }) {
     <div className="scale" role="img" aria-label={`Scale from the lowest observed water, ${ft(lo)} in ${year(records.low.time, offsetMs)}, to the highest, ${ft(hi)} in ${year(records.high.time, offsetMs)}. Now ${ft(level)}${flood ? `; minor flood stage ${ft(flood.minor)}` : ''}.`}>
       <div className="scale-bar" aria-hidden="true">
         {flood && <div className="scale-flood" style={{ left: `${pct(flood.minor)}%` }} />}
-        {flood && <div className="scale-flood-tick" style={{ left: `${pct(flood.minor)}%` }}><span>flood {flood.minor.toFixed(1)}</span></div>}
-        <div className="scale-now" style={{ left: `${pct(level)}%` }}><span>{level.toFixed(1)} ft</span></div>
+        {flood && <div className="scale-flood-tick" style={{ left: `${pct(flood.minor)}%` }}><span>flood {hNum(flood.minor)}</span></div>}
+        <div className="scale-now" style={{ left: `${pct(level)}%` }}><span>{ft(level)}</span></div>
       </div>
       <div className="scale-ends" aria-hidden="true">
-        <span>▼ {lo.toFixed(1)} · {year(records.low.time, offsetMs)}</span>
-        <span>{year(records.high.time, offsetMs)} · {hi.toFixed(1)} ▲</span>
+        <span>▼ {hNum(lo)} · {year(records.low.time, offsetMs)}</span>
+        <span>{year(records.high.time, offsetMs)} · {hNum(hi)} ▲</span>
       </div>
     </div>
   )
@@ -88,7 +89,7 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
         )}
         {records && <li>🏆 Highest observed {ft(records.high.height)} on {date(records.high)} · lowest {ft(records.low.height)} on {date(records.low)}.</li>}
       </ul>
-      <p className="hint small-print">NOAA verified observations on today's chart datum.</p>
+      <p className="hint small-print">NOAA verified observations on today's chart datum. <Explain id="history" /></p>
     </details>
   )
 }

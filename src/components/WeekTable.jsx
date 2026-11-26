@@ -1,7 +1,8 @@
 // Week tab. Default view: one small tide curve per day (night shaded, HW/LW marked).
 // The full table is one tap away and is what gets printed.
+import { Explain } from './Explain.jsx'
 import { useState } from 'react'
-import { heightAt, formatStationTime, formatAtStation, offsetAt, stationDate, formatDay, isClock24, ft } from '../tides.js'
+import { heightAt, formatStationTime, formatAtStation, offsetAt, stationDate, formatDay, isClock24, hNum, ft } from '../tides.js'
 import { sunTimes, moonPhase } from '../astro.js'
 import { floodStage } from '../history.js'
 import { MoonDisc } from './Instruments.jsx'
@@ -48,7 +49,7 @@ function DayStrip({ day, events, list, sun, dayOffset, width, lo, hi, now, isTod
             {bigEnds.has(e.time.getTime()) && <circle cx={x(e.time.getTime())} cy={ey} r="7.5" className="strip-big" />}
             <circle cx={x(e.time.getTime())} cy={ey} r="4" className={flooded ? 'dot-flood' : high ? 'dot-high' : 'dot-low'} />
             <text x={ex} y={high ? ey - 20 : ey + 17} textAnchor="middle" className="strip-time">{formatStationTime(e.local, { withDay: false })}</text>
-            <text x={ex} y={high ? ey - 10 : ey + 27} textAnchor="middle" className="strip-ht">{e.height.toFixed(1)}</text>
+            <text x={ex} y={high ? ey - 10 : ey + 27} textAnchor="middle" className="strip-ht">{hNum(e.height)}</text>
           </g>
         )
       })}
@@ -87,6 +88,7 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
     <section className="panel week">
       <div className="panel-head">
         <h2>7 days</h2>
+        <Explain id="week" />
         <div className="week-tools no-print">
           <div className="seg small" role="radiogroup" aria-label="View">
             {[['chart', '📈'], ['table', '☰']].map(([v, icon]) => (

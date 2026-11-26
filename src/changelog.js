@@ -11,6 +11,27 @@
 
 export const CHANGELOG = [
   {
+    version: '1.16.0',
+    date: '2026-11-26',
+    title: 'Easier to read, and more to go on',
+    changes: [
+      { kind: 'improved', text: 'The picture is easier to read: a numbered tide staff, a red tag with the height now, and dashed lines showing where the next high and low water will reach.' },
+      { kind: 'new', text: 'Wind, air and sea temperature and the barometer now run across the top of the picture, so the present conditions are in one glance.' },
+      { kind: 'new', text: 'Marine warnings in force (gale, small craft, coastal flood and the rest) and the marine forecast for your waters, from the National Weather Service. Tap a warning for the detail and the advice to mariners.' },
+      { kind: 'new', text: 'A ? on every panel explains how to read it and what its terms mean. Underlined words explain themselves, and the full glossary is under ⓘ at the foot of the page.' },
+      { kind: 'new', text: 'A short tour on your first visit. Skip it if you like, and find it again under ⓘ.' },
+      { kind: 'new', text: 'The height in context: a line under the dial says how the water now compares with a usual high and low water here.' },
+      { kind: 'new', text: 'My berth, on the Plan tab: enter the charted depth at your dock, mooring or ramp and your draft to see the depth of water there now, the clearance under your keel, and when you are predicted to touch bottom.' },
+      { kind: 'new', text: 'By your rules: three lights for launching, fishing the turn of the tide and walking the flats, each driven by figures you set. They describe the tide only; whether to go is still your call.' },
+      { kind: 'new', text: 'A map for choosing a station. Filled red markers have a tide gauge; hollow blue ones give predictions only.' },
+      { kind: 'new', text: 'A confidence note under the tide curve tells you how closely the gauge has followed the predictions over the last 24 hours.' },
+      { kind: 'new', text: 'Wind against tide: the Currents tab warns when the wind is blowing against the current, which makes for a short, steep sea.' },
+      { kind: 'new', text: 'Share button beside the station name: send the present tide as a picture and a link, or copy it where sharing is not available.' },
+      { kind: 'new', text: 'Choice of units under ⓘ: feet and °F, or metres and °C. Speeds stay in knots.' },
+      { kind: 'improved', text: 'Every chart now has a legend beneath it saying what each line and dot means.' },
+    ],
+  },
+  {
     version: '1.15.0',
     date: '2026-11-26',
     title: 'Version history',

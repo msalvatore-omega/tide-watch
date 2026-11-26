@@ -2,10 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import { setClock24 } from './tides.js'
+import { setClock24, setMetric } from './tides.js'
 
 // Mariners' 24-hour clock unless the user chose the 12-hour style.
 try { setClock24(localStorage.getItem('tidely.clock') !== '12') } catch { setClock24(true) }
+
+try { setMetric(localStorage.getItem('tidely.units') === 'metric') } catch { /* feet */ }
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

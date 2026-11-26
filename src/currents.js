@@ -40,3 +40,16 @@ export function speedAt(events, t) {
   if (!c) return null
   return c.phase === 'ebb' ? -c.knots : c.knots
 }
+
+/**
+ * Wind against tide: wind blowing against the current heaps the sea up short and steep.
+ * `windFrom` is the direction the wind blows FROM (degrees), `set` the direction the
+ * current flows TOWARD. Opposed when the two are within 45° of each other.
+ * Returns null (not opposed, or too little of either) or { angle, strong }.
+ */
+export function windAgainstCurrent(windFrom, windKnots, set, drift) {
+  if (windFrom == null || set == null || !(windKnots >= 10) || !(drift >= 0.5)) return null
+  const angle = Math.abs(((windFrom - set + 540) % 360) - 180) // 0 = dead against
+  if (angle > 45) return null
+  return { angle, strong: windKnots >= 17 && drift >= 1 }
+}

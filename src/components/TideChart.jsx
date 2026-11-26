@@ -80,14 +80,6 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
         <path d={toArea(samples, line)} fill="url(#chartFill)" />
         <path d={line} fill="none" className="line-forecast" strokeWidth="2" strokeDasharray={measured.length ? '5 4' : undefined} />
         {measured.length > 1 && <path d={toPath(measured)} fill="none" stroke="#e5484d" strokeWidth="2.5" />}
-        {measured.length > 0 && (
-          <g className="legend" transform={`translate(${width - 168} 0)`}>
-            <line x1="0" x2="18" y1="10" y2="10" stroke="#e5484d" strokeWidth="2.5" />
-            <text x="22" y="14">Observed</text>
-            <line x1="88" x2="106" y1="10" y2="10" className="line-forecast" strokeWidth="2" strokeDasharray="5 4" />
-            <text x="110" y="14">Predicted</text>
-          </g>
-        )}
         {shown.map((e) => {
           const ex = x(e.time)
           const anchor = ex < 50 ? 'start' : ex > width - 50 ? 'end' : 'middle'
@@ -111,6 +103,14 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
         {!latest && forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
         <text x={Math.max(nowX - 4, 4)} y={14} textAnchor="end" className="evt now">Now</text>
       </svg>
+      <p className="legend-line" aria-hidden="true">
+        {measured.length > 0 && <span><i className="lgl obs" /> observed</span>}
+        <span><i className={measured.length ? 'lgl pred dashed' : 'lgl pred'} /> predicted</span>
+        <span><i className="lg dot-high-bg" /> high water</span>
+        <span><i className="lg dot-low-bg" /> low water</span>
+        {floodLines.length > 0 && <span><i className="lgl floodl" /> flood stage</span>}
+        <span><i className="lgl nowl" /> now</span>
+      </p>
     </div>
   )
 }

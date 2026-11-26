@@ -1,4 +1,5 @@
 // Pure surge/live-reading helpers, shared by the web app and the alerts server.
+import { ft } from './tides.js'
 
 export const DEFAULT_SURGE_FT = 1.0 // flag water this far above/below the prediction
 export const SURGE_CHOICES = [0.5, 0.75, 1, 1.5, 2, 3]
@@ -39,7 +40,7 @@ export function liveNow({ observed, predicted }, now) {
 export function diffText(diff) {
   if (diff == null) return ''
   if (Math.abs(diff) < 0.05) return 'on prediction'
-  return `${Math.abs(diff).toFixed(1)} ft ${diff > 0 ? 'above' : 'below'} predicted`
+  return `${ft(Math.abs(diff))} ${diff > 0 ? 'above' : 'below'} predicted`
 }
 
 export function liveMood(live, fallbackMood, surgeFeet) {

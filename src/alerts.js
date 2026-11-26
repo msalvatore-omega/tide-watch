@@ -1,3 +1,5 @@
+import { ft } from './tides.js'
+
 // "Big swing" alerts: a swing is the change in height from one high/low to the next.
 // A swing is flagged when it is unusually large for *this* station (auto mode:
 // top 10% of the month's swings) or bigger than a fixed number of feet (custom).
@@ -43,7 +45,7 @@ export function alertsToICS(alerts, stationName, reminderMinutes = 120) {
   const esc = (s) => s.replace(/([,;\\])/g, '\\$1')
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tidely//Tidal Range Alerts//EN', 'CALSCALE:GREGORIAN']
   for (const a of alerts) {
-    const title = `🌊 Large tidal range: ${a.rising ? 'rise' : 'fall'} of ${a.size.toFixed(1)} ft`
+    const title = `🌊 Large tidal range: ${a.rising ? 'rise' : 'fall'} of ${ft(a.size)}`
     const [fromName, toName] = a.rising ? ['LW', 'HW'] : ['HW', 'LW']
     lines.push(
       'BEGIN:VEVENT',
@@ -52,7 +54,7 @@ export function alertsToICS(alerts, stationName, reminderMinutes = 120) {
       `DTSTART:${stamp(a.from.time)}`,
       `DTEND:${stamp(a.to.time)}`,
       `SUMMARY:${esc(title)}`,
-      `DESCRIPTION:${esc(`${stationName}: ${fromName} ${a.from.height.toFixed(1)} ft → ${toName} ${a.to.height.toFixed(1)} ft. About ${a.ratio.toFixed(1)}× the usual range here.`)}`,
+      `DESCRIPTION:${esc(`${stationName}: ${fromName} ${ft(a.from.height)} → ${toName} ${ft(a.to.height)}. About ${a.ratio.toFixed(1)}× the usual range here.`)}`,
       'BEGIN:VALARM',
       'ACTION:DISPLAY',
       `DESCRIPTION:${esc(title)}`,

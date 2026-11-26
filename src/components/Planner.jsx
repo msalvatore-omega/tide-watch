@@ -1,6 +1,7 @@
 // Plan tab: "When is the height of tide above/below X ft?" as a picture. Drag the line
 // on the tide curve to set the height; each day is a 24-hour bar with the usable
 // windows filled in and night shaded. Tap a window for its times.
+import { Explain } from './Explain.jsx'
 import { useRef, useState } from 'react'
 import { heightAt, offsetAt, stationDate, formatDay, formatAtStation, formatDuration, isClock24, ft } from '../tides.js'
 import { isNight, sunTimes } from '../astro.js'
@@ -142,6 +143,7 @@ export default function Planner({ events, now, station, live }) {
     <section className="panel planner">
       <div className="panel-head">
         <h2>Tidal windows</h2>
+        <Explain id="plan" />
         <span className="plan-total">{windows.length ? `${windows.length} · ${formatDuration(totalMs)}` : 'none'}</span>
       </div>
 

@@ -106,8 +106,8 @@ export const PRESETS = [
         return `Yes: ${hits.length} high water${hits.length > 1 ? 's are' : ' is'} predicted to reach flood stage this week: ${list}${hits.length > 3 ? '; and more' : ''}. Minor flood stage is ${ft(flood.minor)}.`
       }
       const gap = flood.minor - top.height
-      const surge = live?.diff > 0.2 ? ` The water is now running ${live.diff.toFixed(1)} ft above prediction, which narrows that margin.` : ''
-      return `None predicted. The highest high water this week is ${ft(top.height)} on ${time(top, true)}, ${gap.toFixed(1)} ft below minor flood stage (${ft(flood.minor)}). A strong onshore wind or storm surge can still raise it.${surge}`
+      const surge = live?.diff > 0.2 ? ` The water is now running ${ft(live.diff)} above prediction, which narrows that margin.` : ''
+      return `None predicted. The highest high water this week is ${ft(top.height)} on ${time(top, true)}, ${ft(gap)} below minor flood stage (${ft(flood.minor)}). A strong onshore wind or storm surge can still raise it.${surge}`
     },
   },
   {
