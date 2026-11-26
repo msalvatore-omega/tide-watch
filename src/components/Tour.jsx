@@ -6,9 +6,9 @@ const seen = () => { try { return localStorage.getItem(KEY) === 'done' } catch {
 
 const STEPS = [
   { icon: '🌊', title: 'Welcome aboard', text: 'Tidely shows the tide where you are: the height now, and the next high and low water. Here is a one-minute look around.' },
-  { icon: '🖼️', title: 'The picture', text: 'The water rises and falls against the numbered staff. The red tag is the height now; the dashed lines show where the next high and low water will reach. Wind, temperatures and the barometer run across the top.' },
+  { icon: '📈', title: 'The tide now', text: 'The big figure is the height of tide. The gauge and curve beneath show where the water is, where it has been and where it is going; the red line is now. Below are the next high and low water and the conditions at the gauge.' },
   { icon: '📍', title: 'Your station', text: 'Tap the station name to search by zip code, port or map. Stations marked “Tide gauge” measure the real water; the rest give predictions only. Tap ☆ to keep favourites one tap away.' },
-  { icon: '🧭', title: 'Four tabs', text: 'Now is the present tide and weather. Week draws the next seven days. Plan finds when there is enough water for you. Currents shows which way the stream is running.' },
+  { icon: '🧭', title: 'Four tabs', text: 'Now is the present tide and weather; tap any row beneath it for more. Week draws the next seven days. Plan finds when there is enough water for you. Currents shows which way the stream is running.' },
   { icon: '❓', title: 'Help is always there', text: 'Tap any ? for how to read a panel and what its terms mean. Underlined words explain themselves. The ⓘ at the foot of the page has the glossary, units and this tour.' },
 ]
 

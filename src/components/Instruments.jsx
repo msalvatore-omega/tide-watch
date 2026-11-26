@@ -56,12 +56,11 @@ function DaylightBar({ sun, moon, now, offsetMs }) {
   )
 }
 
-export default function Instruments({ source, sun, moon, offsetMs, now }) {
+export default function Instruments({ sun, moon, offsetMs, now }) {
   return (
     <section className="instruments" aria-label="Sun and moon">
       <DaylightBar sun={sun} moon={moon} now={now} offsetMs={offsetMs} />
       <Explain id="sun" className="corner" />
-      {source && <p className="cond-source">Weather on the picture: {source}</p>}
     </section>
   )
 }

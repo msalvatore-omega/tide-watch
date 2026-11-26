@@ -11,6 +11,19 @@
 
 export const CHANGELOG = [
   {
+    version: '2.0.0',
+    date: '2026-11-26',
+    title: 'A calmer, simpler Tidely',
+    changes: [
+      { kind: 'improved', text: 'The Now page is rebuilt around one clear graphic: the height of tide in large figures, a level gauge, and the tide curve beside it on the same scale, with the measured water, the prediction and flood stage.' },
+      { kind: 'improved', text: 'The beach picture and the dial are retired. Everything they showed is in the new graphic, so the same facts are no longer drawn three times.' },
+      { kind: 'improved', text: 'Next high and low water sit side by side beneath the graphic, soonest first, with the wind, temperatures and barometer on one line below.' },
+      { kind: 'improved', text: 'All warnings are in one row: coastal flooding, surge, large ranges and National Weather Service warnings. Tap one for the detail.' },
+      { kind: 'improved', text: 'Everything else is folded into single rows you open when you want them: marine forecast, sun and moon, your rules, quick answers, history and large ranges. The page is about a third shorter.' },
+      { kind: 'improved', text: 'Plan now opens on the tidal windows, with My berth and your rules folded beneath.' },
+    ],
+  },
+  {
     version: '1.17.0',
     date: '2026-11-26',
     title: 'Find yourself on the station map',

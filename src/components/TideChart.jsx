@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { heightAt, seriesAt, offsetAt, formatStationTime, formatAtStation, ft } from '../tides.js'
+import { heightAt, seriesAt, offsetAt, formatStationTime, formatAtStation, ft, hNum, isMetric } from '../tides.js'
 
-const HEIGHT = 190
-const PAD = { top: 44, bottom: 50, left: 12, right: 12 }
+const BASE_PAD = { top: 44, bottom: 50, left: 12, right: 12 }
 const PAST_H = 9
 const FUTURE_H = 24
 
@@ -11,8 +10,11 @@ const FUTURE_H = 24
  * predictions where loaded, else interpolated from highs/lows), with the gauge's
  * measured water drawn over it when the station has a gauge.
  */
-export default function TideChart({ events, now, predicted, observed, flood }) {
+export default function TideChart({ events, now, predicted, observed, flood, gauge = false }) {
   const [ref, width] = useWidth()
+  // With `gauge`, a level gauge stands at the left on the same scale as the curve.
+  const HEIGHT = gauge ? 230 : 190
+  const PAD = gauge ? { ...BASE_PAD, left: 62 } : BASE_PAD
 
   const start = now.getTime() - PAST_H * 3600e3
   const end = now.getTime() + FUTURE_H * 3600e3
@@ -82,7 +84,7 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
         {measured.length > 1 && <path d={toPath(measured)} fill="none" stroke="#e5484d" strokeWidth="2.5" />}
         {shown.map((e) => {
           const ex = x(e.time)
-          const anchor = ex < 50 ? 'start' : ex > width - 50 ? 'end' : 'middle'
+          const anchor = ex < PAD.left + 38 ? 'start' : ex > width - 50 ? 'end' : 'middle'
           const ey = y(e.height)
           const above = e.type === 'H'
           return (
@@ -97,6 +99,30 @@ export default function TideChart({ events, now, predicted, observed, flood }) {
             </g>
           )
         })}
+        {gauge && (() => {
+          const level = latest ? latest[1] : forecastNow
+          const top = PAD.top - 8
+          const bottom = HEIGHT - PAD.bottom
+          const step = isMetric() ? (hi - lo > 3 / 0.3048 ? 1 / 0.3048 : 0.5 / 0.3048) : hi - lo > 9 ? 2 : hi - lo > 4.5 ? 1 : 0.5
+          const marks = []
+          for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) marks.push(v)
+          const ly = level != null ? Math.min(bottom, Math.max(top, y(level))) : bottom
+          return (
+            <g className="gauge" aria-hidden="true">
+              <rect x="8" y={top} width="18" height={bottom - top} rx="5" className="gauge-track" />
+              <rect x="8" y={ly} width="18" height={bottom - ly} rx="5" className="gauge-fill" />
+              {marks.map((v) => (
+                <g key={v}>
+                  <line x1="26" x2="31" y1={y(v)} y2={y(v)} className="gauge-tick" />
+                  <text x="34" y={y(v) + 4} className="tick">{hNum(v).replace(/\.0+$/, '')}</text>
+                </g>
+              ))}
+              {flood?.minor != null && flood.minor <= hi && <line x1="4" x2="30" y1={y(flood.minor)} y2={y(flood.minor)} className="flood-line" />}
+              {level != null && <line x1="26" x2={nowX} y1={ly} y2={ly} className="gauge-lead" />}
+              <text x="8" y={bottom + 14} className="tick">{isMetric() ? 'm' : 'ft'}</text>
+            </g>
+          )
+        })()}
         <line x1={nowX} x2={nowX} y1={22} y2={HEIGHT - PAD.bottom} stroke="#ff4d4d" strokeWidth="2" strokeDasharray="4 3" />
         {forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="4" className="dot-now-forecast" strokeWidth="2" />}
         {latest && <circle cx={x(latest[0])} cy={y(latest[1])} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}

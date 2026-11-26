@@ -21,29 +21,17 @@ flooding" always mean water over the land, to keep them apart from the flood tid
 Tidely is built to be read at a glance: instruments and charts first, words on demand.
 Every graphic carries a spoken description for screen readers.
 
-**🌊 Now**
-- **Beach scene** with the water against a numbered tide staff, a tag for the height
-  now, dashed lines for the next HW and LW, the flood-stage line, and the present
-  conditions (wind, air and sea temperature, barometer) across the top. Warning badges
-  (coastal flooding, surge, large range) sit beneath it.
-- **Marine warnings and forecast** from the National Weather Service for the station's
-  waters (never served from the offline cache, so an old warning is not shown as current).
-- **Tide dial**: an arc from low water to high water with a marker for the height now
-  (observed when the station has a gauge, otherwise predicted), flood/ebb/stand, and
-  the next LW and HW with countdowns, and a line saying how the height compares with a
-  usual high and low water here.
-- **By-your-rules lights**: launch, fish the turn, walk the flats (and depth at your
-  berth once set), from figures the user chooses on the Plan tab.
-- **Quick answers**: icon buttons for a written summary and common questions (lowest
-  water this weekend, coastal flooding this week, extremes, next daylight low water).
-  Rules, no AI; an optional AI question box appears when the server has a key.
-- **Sun and moon**: a daylight bar and the moon drawn at its phase (springs/neaps).
-- **Chart**: observed water over the prediction, 9 hours back to 24 ahead, with flood
-  stage drawn in, a legend, and a note on how closely the gauge has followed the
-  predictions over the last 24 hours.
-- **History scale**: lowest to highest water on record with today and flood stage
-  marked; the dated facts open on tap.
-- **Large ranges** for the week with per-station alert levels and calendar export.
+**Now**
+- **One graphic**: the height of tide in large figures with flood/ebb/stand, a level
+  gauge, and the tide curve on the same scale (9 hours back to 24 ahead): observed water
+  over the prediction, HW/LW marked, flood stage drawn in.
+- **Next high and low water** side by side, soonest first, then one line of present
+  conditions (wind, air and sea temperature, barometer with trend).
+- **One row of warnings**: coastal flooding, surge, large range, and National Weather
+  Service warnings for the station's waters (never served from the offline cache).
+- **Folded rows**, opened on demand: marine forecast, sun and moon, by-your-rules lights,
+  quick answers (rules, no AI; optional AI box when the server has a key), history
+  scale and facts, large ranges with alert levels and calendar export.
 
 **📅 Week**: one small tide curve per day (night shaded, HW/LW marked, large ranges
 ringed); the full table is one tap away and is what prints.
@@ -159,7 +147,7 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/glossary.js` | Term definitions and the "how to read this" text for each panel |
 | `src/changelog.js` | Version history shown to users (update with every change) |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
-| `src/components/` | Beach scene, tide dial, instruments, chart, week strips, planner timeline, currents dial, history scale, station picker, alerts |
+| `src/components/` | Tide chart with level gauge, sun/moon bar, week strips, planner timeline, currents dial, history scale, station picker, alerts |
 | `src/push.js` | Registers the device with the alerts server |
 | `public/sw.js` | Service worker: offline cache, and notifications |
 | `test/` | App unit tests (vitest) |

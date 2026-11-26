@@ -2,15 +2,13 @@ import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
 import { tideNow, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, hDiff, tempText, setClock24, isClock24, setMetric, isMetric, ft } from './tides.js'
 import { useSixMinute, useConditions, useNearestLiveGauge, useOnline, liveNow, isSurge, diffText } from './live.js'
-import { isNight, sunTimes, moonPhase } from './astro.js'
+import { sunTimes, moonPhase } from './astro.js'
 import { useFavorites } from './favorites.js'
 import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
 import HistoryFacts from './components/HistoryFacts.jsx'
-import TideScene from './components/TideScene.jsx'
 import TideChart from './components/TideChart.jsx'
 import StationPicker from './components/StationPicker.jsx'
 import Instruments, { freshWeather } from './components/Instruments.jsx'
-import TideDial from './components/TideDial.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
 import WeekTable from './components/WeekTable.jsx'
 import Planner from './components/Planner.jsx'
@@ -22,17 +20,16 @@ import Marine, { useMarine } from './components/Marine.jsx'
 import { useMyWater, RuleLights, Berth, Rules } from './components/MyWater.jsx'
 import Tour from './components/Tour.jsx'
 import Share from './components/Share.jsx'
-import { heightContext, agreement } from './insight.js'
 import { currentAlerts } from './nws.js'
 
 const DEFAULT_STATION = '8574680' // Baltimore (Fort McHenry), MD
 const STORAGE_KEY = 'tidewatch.station'
 const MAX_READING_AGE_MS = 60 * 60e3 // older gauge readings aren't shown as "now"
 const TABS = [
-  { id: 'now', label: '🌊 Now' },
-  { id: 'week', label: '📅 Week' },
-  { id: 'plan', label: '🧭 Plan' },
-  { id: 'currents', label: '🌀 Currents' },
+  { id: 'now', label: 'Now' },
+  { id: 'week', label: 'Week' },
+  { id: 'plan', label: 'Plan' },
+  { id: 'currents', label: 'Currents' },
 ]
 
 const read = (key) => { try { return localStorage.getItem(key) } catch { return null } }
@@ -172,7 +169,6 @@ function Tidely() {
   const marine = useMarine(station, online)
   const marineAlerts = marine?.alerts ? currentAlerts(marine.alerts, now) : []
   const my = useMyWater(stationId, events)
-  const agree = hasGauge ? agreement(sixData, now) : null
   const flood = useFloodLevels(stationId)
   const todayStart = tide ? new Date(Date.parse(`${stationDate(now, tide.offsetMs)}T00:00:00Z`) - tide.offsetMs) : null
   const historyFacts = useHistoryFacts({ stationId, enabled: Boolean(live), level: live?.height, observed: sixData?.observed, flood, todayStart, offsetMs: tide?.offsetMs })
@@ -239,6 +235,18 @@ function Tidely() {
       detail: `Large tidal range${bigRange.inProgress ? ' under way' : ''}: ${bigRange.rising ? 'rise' : 'fall'} of ${ft(bigRange.size)} to ${hwlw(bigRange.to)} ${formatStationTime(bigRange.to.local)}, ${bigRange.ratio.toFixed(1)}× the usual range.`,
     })
   }
+  for (const a of marineAlerts) {
+    const text = a.description.replace(/\n(?!\n)/g, ' ').replace(/\s{2,}/g, ' ').trim()
+    badges.push({
+      id: `wx-${a.id}`,
+      kind: a.rank >= 3 ? 'wx severe' : 'wx',
+      icon: '🚩',
+      label: a.event,
+      detail: `${a.event} ${a.onset && a.onset > now ? `from ${formatAtStation(a.onset, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : `until ${formatAtStation(a.ends, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`} (National Weather Service). ${text.length > 420 ? `${text.slice(0, 420)}…` : text}`,
+    })
+  }
+  const isStand = live?.trend === 'steady'
+  const heroState = isStand ? { glyph: '◆', text: 'Stand', cls: 'stand' } : view?.rising ? { glyph: '▲', text: 'Flood tide', cls: 'flood' } : { glyph: '▼', text: 'Ebb tide', cls: 'ebb' }
   const shownBadge = badges.find((b) => b.id === (badgeOpen === undefined ? 'flood' : badgeOpen)) ?? null
 
   const gaugeNote = live ? null
@@ -344,103 +352,107 @@ function Tidely() {
       <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
       {tide && view && tab === 'now' && (
         <>
-          <section className="scene-wrap">
-            <TideScene
-              height={view.height}
-              min={view.min}
-              max={view.max}
-              rising={view.rising}
-              stand={live?.trend === 'steady'}
-              observed={Boolean(live)}
-              night={hasCoords ? isNight(now, station.lat, station.lng, tide.offsetMs) : tide.stationHour < 6.5 || tide.stationHour >= 18.5}
-              nextHigh={{ height: tide.nextHigh.height, label: formatStationTime(tide.nextHigh.local, { withDay: false }) }}
-              nextLow={{ height: tide.nextLow.height, label: formatStationTime(tide.nextLow.local, { withDay: false }) }}
-              flood={flood?.minor ?? null}
-              weather={wx}
-            />
-            {wx && <SceneWeather wx={wx} />}
-            <Explain id="scene" className="corner" />
+          <section className="hero">
+            <div className="hero-top">
+              <div className="hero-height">{ft(view.height)}</div>
+              <div className="hero-state">
+                <strong className={heroState.cls}>{heroState.glyph} {heroState.text}</strong>
+                <span>
+                  {live
+                    ? <>● observed {formatAtStation(live.time, tide.offsetMs)}{Math.abs(live.diff ?? 0) >= 0.05 ? ` · ${hDiff(live.diff)} on prediction` : ''}</>
+                    : '○ predicted'}
+                </span>
+              </div>
+              <Explain id="scene" />
+            </div>
+            <TideChart gauge events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
+            <div className="hero-next">
+              {[tide.nextHigh, tide.nextLow].sort((x, y) => x.time - y.time).map((e) => (
+                <div key={e.type} className={e.type === 'H' ? 'next high' : 'next low'}>
+                  <span className="next-name">{e.type === 'H' ? '▲ High water' : '▼ Low water'}</span>
+                  <span className="next-time">{formatStationTime(e.local, { withDay: false })}</span>
+                  <span className="next-sub">{ft(e.height)} · {formatCountdown(e.time - now)}</span>
+                </div>
+              ))}
+            </div>
+            {wx && <Conditions wx={wx} source={weatherGauge?.name} />}
+            {gaugeNote && <p className="dial-note">{gaugeNote}</p>}
           </section>
 
-          <section className="badge-wrap">
-            {badges.length > 0 && (
+          {badges.length > 0 && (
+            <section className="badge-wrap">
               <div className="scene-badges">
                 {badges.map((b) => (
-                  <button key={b.id} type="button" className={`scene-pill ${b.id}${shownBadge?.id === b.id ? ' on' : ''}`} aria-expanded={shownBadge?.id === b.id} onClick={() => setBadgeOpen(shownBadge?.id === b.id ? null : b.id)}>
+                  <button key={b.id} type="button" className={`scene-pill ${b.kind ?? b.id}${shownBadge?.id === b.id ? ' on' : ''}`} aria-expanded={shownBadge?.id === b.id} onClick={() => setBadgeOpen(shownBadge?.id === b.id ? null : b.id)}>
                     <span aria-hidden="true">{b.icon}</span> {b.label}
                   </button>
                 ))}
               </div>
-            )}
-            {shownBadge && <p className={`badge-detail ${shownBadge.id}`} role={shownBadge.id === 'flood' ? 'alert' : 'status'}>{shownBadge.detail}</p>}
-          </section>
-
-          {marineAlerts.length > 0 && <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />}
-
-          <TideDial tide={tide} height={view.height} rising={view.rising} live={live} now={now} note={gaugeNote} context={heightContext(view.height, events)} />
-
-          <RuleLights my={my} events={events} now={now} heightNow={view.height} onOpen={() => setTab('plan')} />
-
-          <Glance
-            key={stationId}
-            station={station}
-            online={online}
-            now={now}
-            events={events}
-            tide={tide}
-            live={live}
-            forecastNow={forecastNow}
-            alerts={swing.alerts}
-            flood={flood}
-            surgeFeet={surgeFeet}
-            weather={weather.status === 'ok' ? weather.data : null}
-          />
-
-          <Instruments
-            now={now}
-            source={wx ? weatherGauge?.name : null}
-            sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
-            moon={moonPhase(now)}
-            offsetMs={tide.offsetMs}
-          />
-
-          {marineAlerts.length === 0 && <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />}
-
-          <section className="panel">
-            <div className="panel-head">
-              <h2>{hasGauge ? 'Observed vs predicted' : 'Predicted tide'}</h2>
-              <Explain id="chart" />
-            </div>
-            <TideChart events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
-            {agree && (
-              <p className={`agree ${agree.grade}`}>
-                <span className="agree-dot" aria-hidden="true" />
-                {agree.grade === 'close' ? 'Predictions holding well' : agree.grade === 'fair' ? 'Predictions roughly holding' : 'Predictions well off today'}
-                : last 24 h the gauge averaged {ft(agree.avg)} from prediction (most {ft(agree.max)}{Math.abs(agree.bias) >= 0.1 ? `, mostly ${agree.bias > 0 ? 'above' : 'below'}` : ''}).
-              </p>
-            )}
-          </section>
-
-          {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
-
-          {station && (
-            <AlertsPanel
-              station={station}
-              now={now}
-              {...swing}
-              reading={live}
-              liveStatus={live ? 'ok' : noGauge ? 'unavailable' : reading ? 'error' : six.status}
-            />
+              {shownBadge && <p className={`badge-detail ${shownBadge.kind ?? shownBadge.id}`} role={shownBadge.id === 'flood' ? 'alert' : 'status'}>{shownBadge.detail}</p>}
+            </section>
           )}
+
+          <div className="folds">
+            {marine?.forecast.length > 0 && (
+              <Fold icon="⛅" title="Marine forecast" hint={marine.forecast[0].name}>
+                <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />
+              </Fold>
+            )}
+            <Fold icon="☀️" title="Sun and moon" hint={moonPhase(now).name}>
+              <Instruments
+                now={now}
+                sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
+                moon={moonPhase(now)}
+                offsetMs={tide.offsetMs}
+              />
+            </Fold>
+            <Fold icon="🚦" title="By your rules" hint="launch · fish · flats">
+              <RuleLights my={my} events={events} now={now} heightNow={view.height} onOpen={() => setTab('plan')} />
+            </Fold>
+            <Fold icon="💬" title="Quick answers" hint="summary · weekend">
+              <Glance
+                key={stationId}
+                station={station}
+                online={online}
+                now={now}
+                events={events}
+                tide={tide}
+                live={live}
+                forecastNow={forecastNow}
+                alerts={swing.alerts}
+                flood={flood}
+                surgeFeet={surgeFeet}
+                weather={weather.status === 'ok' ? weather.data : null}
+              />
+            </Fold>
+            {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
+            {station && (
+              <Fold icon="↕️" title="Large ranges" hint={swing.alerts?.length ? `${swing.alerts.length} this week` : 'none this week'}>
+                <AlertsPanel
+                  station={station}
+                  now={now}
+                  {...swing}
+                  reading={live}
+                  liveStatus={live ? 'ok' : noGauge ? 'unavailable' : reading ? 'error' : six.status}
+                />
+              </Fold>
+            )}
+          </div>
         </>
       )}
 
       {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} flood={flood} />}
       {tide && view && tab === 'plan' && (
         <>
-          <Rules key={`rules-${stationId}`} my={my} events={events} now={now} heightNow={view.height} />
           <Planner events={events} now={now} station={station} live={live} />
-          <Berth key={`berth-${stationId}-${metric}`} my={my} events={events} now={now} heightNow={view.height} observed={Boolean(live)} />
+          <div className="folds">
+            <Fold icon="⚓" title="My berth" hint={my.berth ? 'depth at your spot' : 'set your depth and draft'}>
+              <Berth key={`berth-${stationId}-${metric}`} my={my} events={events} now={now} heightNow={view.height} observed={Boolean(live)} />
+            </Fold>
+            <Fold icon="🚦" title="By your rules" hint="launch · fish · flats">
+              <Rules key={`rules-${stationId}`} my={my} events={events} now={now} heightNow={view.height} />
+            </Fold>
+          </div>
         </>
       )}
       {tide && tab === 'currents' && <Currents key={stationId} events={events} now={now} station={station} wind={wx?.wind ?? null} />}
@@ -472,26 +484,42 @@ function Tidely() {
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
-/** Current conditions in a strip across the top of the picture. */
-function SceneWeather({ wx }) {
+/** A row that opens: keeps the secondary panels out of the way until wanted. */
+function Fold({ icon, title, hint, children }) {
+  return (
+    <details className="fold">
+      <summary><span aria-hidden="true">{icon}</span> <strong>{title}</strong>{hint && <small>{hint}</small>}</summary>
+      <div className="fold-body">{children}</div>
+    </details>
+  )
+}
+
+/** Present conditions at the gauge, on one line. */
+function Conditions({ wx, source }) {
   const p = wx.pressure
   const trend = p?.change3h == null ? '' : p.change3h > 1 ? '↗' : p.change3h < -1 ? '↘' : '→'
+  const said = [
+    wx.wind && `Wind ${wx.wind.dir ?? ''} ${Math.round(wx.wind.knots)} knots`,
+    wx.airTemp && `air ${tempText(wx.airTemp.f)}`,
+    wx.waterTemp && `sea ${tempText(wx.waterTemp.f)}`,
+    p && `barometer ${Math.round(p.mb)} millibars${trend === '↗' ? ', rising' : trend === '↘' ? ', falling' : ''}`,
+  ].filter(Boolean).join(', ')
   return (
-    <div className="scene-wx" aria-hidden="true">
+    <div className="conditions" role="img" aria-label={`${said}${source ? `. From ${source}` : ''}.`}>
       {wx.wind && (
         <span>
           {wx.wind.deg != null && (
-            // arrow flying with the wind (north up): it points where the wind is going
-            <svg viewBox="-10 -10 20 20" className="wx-arrow" style={{ transform: `rotate(${wx.wind.deg + 180}deg)` }}>
+            <svg viewBox="-10 -10 20 20" className="wx-arrow" aria-hidden="true" style={{ transform: `rotate(${wx.wind.deg + 180}deg)` }}>
               <line x1="0" y1="7" x2="0" y2="-3" /><polygon points="0,-9 -5,-1 5,-1" />
             </svg>
           )}
-          {wx.wind.dir} {Math.round(wx.wind.knots)} kt
+          <b>{wx.wind.dir} {Math.round(wx.wind.knots)} kt</b><small>wind</small>
         </span>
       )}
-      {wx.airTemp && <span>Air {tempText(wx.airTemp.f)}</span>}
-      {wx.waterTemp && <span>Sea {tempText(wx.waterTemp.f)}</span>}
-      {p && <span>{Math.round(p.mb)} mb {trend}</span>}
+      {wx.airTemp && <span><b>{tempText(wx.airTemp.f)}</b><small>air</small></span>}
+      {wx.waterTemp && <span><b>{tempText(wx.waterTemp.f)}</b><small>sea</small></span>}
+      {p && <span><b>{Math.round(p.mb)} {trend}</b><small>mb</small></span>}
+      {source && <em>{source}</em>}
     </div>
   )
 }

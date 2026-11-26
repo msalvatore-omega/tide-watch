@@ -74,10 +74,10 @@ export default function HistoryFacts({ history, flood, now, offsetMs }) {
   return (
     <details className="panel history">
       <summary>
-        <span className="history-title">📜 History</span>
+        <span aria-hidden="true">📜</span> <strong className="history-title">History</strong>
         <span className={unusual ? 'history-headline unusual' : 'history-headline'}>{headline}</span>
-        {records && <RecordScale level={level} records={records} flood={flood} offsetMs={offsetMs} />}
       </summary>
+      {records && <RecordScale level={level} records={records} flood={flood} offsetMs={offsetMs} />}
       <ul className="facts">
         {currentFact && <li>{currentFact}</li>}
         {flood && (

@@ -32,13 +32,13 @@ export const TERMS = {
 
 export const EXPLAIN = {
   scene: {
-    title: 'The picture',
+    title: 'The tide now',
     how: [
-      'The water sits at the present height of tide, read against the numbered staff on the right. The red NOW tag gives the figure.',
-      'The dashed blue and amber lines show where the water will be at the next high and low water. The orange line, when shown, is where coastal flooding begins.',
-      'The strip across the top gives conditions at the gauge: wind (the arrow points where it is blowing to), air and sea temperature, and the barometer with its trend.',
+      'The big figure is the height of tide now, and whether it is flooding or ebbing. The gauge on the left is filled to that height, on the same scale as the curve beside it.',
+      'The curve runs from 9 hours ago to 24 hours ahead: dashed blue is the prediction, red is what the gauge has measured, and the red dashed line is now. Dots mark high and low water; the orange line is flood stage.',
+      'Beneath are the next high and low water, and the wind, air and sea temperature and barometer at the gauge.',
     ],
-    terms: ['height of tide', 'high water', 'low water', 'flood stage', 'knot', 'barometer'],
+    terms: ['height of tide', 'high water', 'low water', 'flood', 'ebb', 'observed', 'predicted', 'flood stage', 'chart datum', 'knot', 'barometer'],
   },
   dial: {
     title: 'The tide dial',
