@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sunTimes, isNight, moonPhase } from '../src/astro.js'
+import { sunTimes, isNight, moonPhase, moonTimes, nextMoonEvent } from '../src/astro.js'
 import { findWindows } from '../src/components/Planner.jsx'
 import { BALTIMORE, EST } from './helpers.js'
 
@@ -107,5 +107,43 @@ describe('tide window planner', () => {
       expect(new Date(x.end).getUTCHours()).toBeLessThan(20)
       expect(x.peak).toBeLessThan(2) // the true high (noon/midnight) is outside the allowed hours
     }
+  })
+})
+
+describe('moonrise and moonset', () => {
+  const hm = (d, off) => new Date(d.getTime() + off).toISOString().slice(11, 16)
+  const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3))
+  const near = (got, want) => expect(Math.abs(mins(got) - mins(want))).toBeLessThanOrEqual(4)
+  // Reference times from a full ephemeris (astronomy-engine), station-local.
+  it('matches an ephemeris within a few minutes', () => {
+    for (const [day, rise, set] of [['2026-11-26', '18:42', '09:33'], ['2026-12-03', '01:52', '13:26'], ['2026-12-09', '08:03', '16:58'], ['2026-12-17', '12:09', '00:01']]) {
+      const m = moonTimes(new Date(`${day}T17:00:00Z`), BALTIMORE.lat, BALTIMORE.lng, EST)
+      near(hm(m.rise, EST), rise)
+      near(hm(m.set, EST), set)
+    }
+    const sf = moonTimes(new Date('2026-11-26T20:00:00Z'), 37.8063, -122.4659, -8 * 3600e3)
+    near(hm(sf.rise, -8 * 3600e3), '19:00')
+    near(hm(sf.set, -8 * 3600e3), '09:39')
+  })
+  it('some days have no moonrise or no moonset, and the times stay inside the day', () => {
+    let missing = 0
+    for (let i = 0; i < 30; i++) {
+      const noon = new Date(Date.parse('2026-11-26T17:00:00Z') + i * 86400e3)
+      const m = moonTimes(noon, BALTIMORE.lat, BALTIMORE.lng, EST)
+      if (!m.rise || !m.set) missing++
+      for (const t of [m.rise, m.set]) if (t) expect(Math.abs(t - noon)).toBeLessThanOrEqual(12 * 3600e3)
+    }
+    expect(missing).toBeGreaterThanOrEqual(1)
+    expect(missing).toBeLessThanOrEqual(3)
+  })
+  it('knows whether the moon is up, and what comes next', () => {
+    const evening = new Date('2026-11-27T02:00:00Z') // 21:00 on the 26th, after moonrise
+    expect(moonTimes(evening, BALTIMORE.lat, BALTIMORE.lng, EST).up).toBe(true)
+    const next = nextMoonEvent(evening, BALTIMORE.lat, BALTIMORE.lng, EST)
+    expect(next.type).toBe('set')
+    near(hm(next.time, EST), '10:28')
+    const noon = new Date('2026-11-26T17:00:00Z')
+    expect(moonTimes(noon, BALTIMORE.lat, BALTIMORE.lng, EST).up).toBe(false)
+    expect(nextMoonEvent(noon, BALTIMORE.lat, BALTIMORE.lng, EST).type).toBe('rise')
   })
 })

@@ -11,6 +11,14 @@
 
 export const CHANGELOG = [
   {
+    version: '2.3.0',
+    date: '2026-11-26',
+    title: 'Moonrise and moonset',
+    changes: [
+      { kind: 'new', text: 'Moonrise and moonset times. The next one shows under the moon on the main graphic, and both of today\'s are in the Sun and moon row, with whether the moon is up now.' },
+    ],
+  },
+  {
     version: '2.2.0',
     date: '2026-11-26',
     title: 'Plain line icons',

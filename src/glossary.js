@@ -75,7 +75,7 @@ export const EXPLAIN = {
   sun: {
     title: 'Sun and moon',
     how: [
-      'The bar is the 24 hours of today: yellow is daylight, the red marker is now. The moon is drawn as it looks tonight.',
+      'The bar is the 24 hours of today: yellow is daylight, the red marker is now. The moon is drawn as it looks tonight, with today\'s moonrise and moonset beneath (about once a month a day has no moonrise, or no moonset).',
       'Around new and full moon the tides are springs, with larger ranges; around the half moons they are neaps.',
     ],
     terms: ['springs', 'neaps'],

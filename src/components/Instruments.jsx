@@ -33,7 +33,7 @@ export function MoonDisc({ moon, size = 26 }) {
 }
 
 /** 24-hour bar: night, daylight between sunrise and sunset, and a dot for now. */
-function DaylightBar({ sun, moon, now, offsetMs }) {
+function DaylightBar({ sun, moon, moonTimes, now, offsetMs }) {
   const dayStart = (() => {
     const local = new Date(now.getTime() + offsetMs)
     return Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs
@@ -43,7 +43,7 @@ function DaylightBar({ sun, moon, now, offsetMs }) {
   const hasSun = Boolean(sun?.sunrise)
   const tides = moon.tides === 'spring' ? 'springs' : moon.tides === 'neap' ? 'neaps' : null
   return (
-    <div className="daybar-wrap" role="img" aria-label={`${hasSun ? `Sunrise ${time(sun.sunrise)}, sunset ${time(sun.sunset)}. ` : sun?.polar === 'night' ? 'No sunrise today. ' : sun?.polar === 'day' ? 'Sun up all day. ' : ''}${moon.name}${tides ? `, ${tides}` : ''}.`}>
+    <div className="daybar-wrap" role="img" aria-label={`${hasSun ? `Sunrise ${time(sun.sunrise)}, sunset ${time(sun.sunset)}. ` : sun?.polar === 'night' ? 'No sunrise today. ' : sun?.polar === 'day' ? 'Sun up all day. ' : ''}${moon.name}${tides ? `, ${tides}` : ''}.${moonTimes ? ` Moonrise ${moonTimes.rise ? time(moonTimes.rise) : 'not today'}, moonset ${moonTimes.set ? time(moonTimes.set) : 'not today'}.` : ''}`}>
       <div className="daybar" aria-hidden="true">
         {hasSun && <div className="daybar-day" style={{ left: `${pct(sun.sunrise)}%`, width: `${pct(sun.sunset) - pct(sun.sunrise)}%` }} />}
         {sun?.polar === 'day' && <div className="daybar-day" style={{ left: 0, width: '100%' }} />}
@@ -53,14 +53,21 @@ function DaylightBar({ sun, moon, now, offsetMs }) {
         {hasSun ? <><span><Icon name="sun" />↑ {time(sun.sunrise)}</span><span><Icon name="sun" />↓ {time(sun.sunset)}</span></> : <span>{sun?.polar === 'night' ? 'Polar night' : sun?.polar === 'day' ? 'Midnight sun' : ''}</span>}
         <span className="daybar-moon"><MoonDisc moon={moon} size={18} /> {tides ?? moon.name}</span>
       </div>
+      {moonTimes && (
+        <div className="daybar-labels moon-row" aria-hidden="true">
+          <span><MoonDisc moon={moon} size={14} /> ↑ {moonTimes.rise ? time(moonTimes.rise) : 'none today'}</span>
+          <span><MoonDisc moon={moon} size={14} /> ↓ {moonTimes.set ? time(moonTimes.set) : 'none today'}</span>
+          <span>{moonTimes.up ? 'moon is up' : 'moon is down'}</span>
+        </div>
+      )}
     </div>
   )
 }
 
-export default function Instruments({ sun, moon, offsetMs, now }) {
+export default function Instruments({ sun, moon, moonTimes, offsetMs, now }) {
   return (
     <section className="instruments" aria-label="Sun and moon">
-      <DaylightBar sun={sun} moon={moon} now={now} offsetMs={offsetMs} />
+      <DaylightBar sun={sun} moon={moon} moonTimes={moonTimes} now={now} offsetMs={offsetMs} />
       <Explain id="sun" className="corner" />
     </section>
   )

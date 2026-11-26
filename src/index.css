@@ -1082,3 +1082,7 @@ footer .about { flex: 1; min-width: 0; }
 .glance-icon { color: var(--brand); display: inline-flex; }
 .light i { display: inline-flex; color: var(--muted); }
 h1 .icon { color: var(--brand); }
+.hero-moon-next { font-variant-numeric: tabular-nums; }
+.moon-row { margin-top: 4px; }
+.moon-row span { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 420px) { .hero-height { font-size: 2.5rem; } .hero-top { gap: 9px; } .hero-state strong { font-size: 1rem; white-space: nowrap; } }

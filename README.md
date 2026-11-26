@@ -29,7 +29,7 @@ Every graphic carries a spoken description for screen readers.
   conditions (wind, air and sea temperature, barometer with trend).
 - **One row of warnings**: coastal flooding, surge, large range, and National Weather
   Service warnings for the station's waters (never served from the offline cache).
-- **Folded rows**, opened on demand: marine forecast, sun and moon, by-your-rules lights,
+- **Folded rows**, opened on demand: marine forecast, sun and moon (with moonrise and moonset), by-your-rules lights,
   quick answers (rules, no AI; optional AI box when the server has a key), history
   scale and facts, large ranges with alert levels and calendar export.
 
@@ -77,7 +77,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 62 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing, changelog
+npm test        # 81 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing, changelog
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.
@@ -136,7 +136,7 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/tides.js` | Tide math (interpolation) and formatting |
 | `src/live.js` | Live gauge + weather hooks (6-minute refresh) |
 | `src/surge.js` | Measured-vs-forecast logic (shared with the server) |
-| `src/astro.js` | Sunrise/sunset and moon phase |
+| `src/astro.js` | Sunrise/sunset, moon phase, moonrise/moonset |
 | `src/history.js` | Flood levels, "last time this high/low", records |
 | `src/favorites.js` | Favorite stations |
 | `src/currents.js` | Tidal-current state from slack/max events |

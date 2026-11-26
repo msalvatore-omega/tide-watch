@@ -3,7 +3,7 @@ import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
 import { tideNow, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, hDiff, tempText, setClock24, isClock24, setMetric, isMetric, ft } from './tides.js'
 import { useSixMinute, useConditions, useNearestLiveGauge, useOnline, liveNow, isSurge, diffText } from './live.js'
-import { sunTimes, moonPhase } from './astro.js'
+import { sunTimes, moonPhase, moonTimes, nextMoonEvent } from './astro.js'
 import { useFavorites } from './favorites.js'
 import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
 import HistoryFacts from './components/HistoryFacts.jsx'
@@ -247,6 +247,9 @@ function Tidely() {
     })
   }
   const moon = moonPhase(now)
+  const moonToday = hasCoords ? moonTimes(now, station.lat, station.lng, tide.offsetMs) : null
+  const moonNext = hasCoords ? nextMoonEvent(now, station.lat, station.lng, tide.offsetMs) : null
+  const moonNextText = moonNext ? `${moonNext.type === 'rise' ? 'moonrise' : 'moonset'} ${formatAtStation(moonNext.time, tide.offsetMs)}` : ''
   const isStand = live?.trend === 'steady'
   const heroState = isStand ? { glyph: '◆', text: 'Stand', cls: 'stand' } : view?.rising ? { glyph: '▲', text: 'Flood tide', cls: 'flood' } : { glyph: '▼', text: 'Ebb tide', cls: 'ebb' }
   const shownBadge = badges.find((b) => b.id === (badgeOpen === undefined ? 'flood' : badgeOpen)) ?? null
@@ -365,9 +368,10 @@ function Tidely() {
                     : '○ predicted'}
                 </span>
               </div>
-              <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}.`}>
+              <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}${moonNextText ? `. Next ${moonNextText}` : ''}.`}>
                 <MoonDisc moon={moon} size={40} />
                 <small aria-hidden="true">{moon.tides === 'spring' ? 'springs' : moon.tides === 'neap' ? 'neaps' : `${Math.round(moon.illumination * 100)}%`}</small>
+                {moonNext && <small aria-hidden="true" className="hero-moon-next">{moonNext.type === 'rise' ? '↑' : '↓'} {formatAtStation(moonNext.time, tide.offsetMs)}</small>}
               </div>
               <Explain id="scene" />
             </div>
@@ -409,6 +413,7 @@ function Tidely() {
                 now={now}
                 sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
                 moon={moonPhase(now)}
+                moonTimes={moonToday}
                 offsetMs={tide.offsetMs}
               />
             </Fold>
