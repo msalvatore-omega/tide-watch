@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-export default function StationMap({ stations, liveIds, liveOnly, center, onPick, isFavorite, onToggleFavorite }) {
+export default function StationMap({ stations, liveIds, liveOnly, center, me, focus, onLocate, locating, onPick, isFavorite, onToggleFavorite }) {
+  const meLayer = useRef(null)
   const el = useRef(null)
   const map = useRef(null)
   const layer = useRef(null)
@@ -19,12 +20,32 @@ export default function StationMap({ stations, liveIds, liveOnly, center, onPick
     }).addTo(m)
     map.current = m
     layer.current = L.layerGroup().addTo(m)
+    meLayer.current = L.layerGroup().addTo(m)
     return () => { m.remove(); map.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (center && map.current) map.current.setView([center.lat, center.lng], Math.max(map.current.getZoom(), 10))
   }, [center?.lat, center?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Your own position: a blue dot, with a ring for how sure the fix is.
+  useEffect(() => {
+    const group = meLayer.current
+    if (!group) return
+    group.clearLayers()
+    if (!me) return
+    if (me.accuracy > 30) L.circle([me.lat, me.lng], { radius: me.accuracy, color: '#2b7de9', weight: 1, fillColor: '#2b7de9', fillOpacity: 0.12, interactive: false }).addTo(group)
+    L.circleMarker([me.lat, me.lng], { radius: 9, color: '#fff', weight: 3, fillColor: '#2b7de9', fillOpacity: 1 }).bindPopup('You are here').addTo(group)
+  }, [me])
+
+  // Searching by name: frame the matching stations.
+  const focusKey = (focus ?? []).map((s) => s.id).join(',')
+  useEffect(() => {
+    const pts = (focus ?? []).filter((s) => s.lat != null && s.lng != null).map((s) => [s.lat, s.lng])
+    if (!map.current || !pts.length) return
+    if (pts.length === 1) map.current.setView(pts[0], 11)
+    else map.current.fitBounds(pts, { padding: [30, 30], maxZoom: 11 })
+  }, [focusKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const group = layer.current
@@ -76,10 +97,20 @@ export default function StationMap({ stations, liveIds, liveOnly, center, onPick
 
   return (
     <div className="map-wrap">
-      <div ref={el} className="map" role="application" aria-label="Map of tide stations. The search box above lists the same stations as text." />
+      <div className="map-frame">
+        <div ref={el} className="map" role="application" aria-label="Map of tide stations. The search box above lists the same stations as text." />
+        {onLocate && (
+          <button type="button" className="map-locate" onClick={onLocate} disabled={locating} aria-label="Show my location on the map">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="1.5" fill="currentColor" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+            </svg>
+          </button>
+        )}
+      </div>
       <p className="legend-line">
         <span><i className="lg map-gauge" /> Tide gauge (observed)</span>
         <span><i className="lg map-pred" /> Predictions only</span>
+        {me && <span><i className="lg map-me" /> You</span>}
       </p>
     </div>
   )

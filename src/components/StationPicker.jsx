@@ -11,6 +11,7 @@ const StationMap = lazy(() => import('./StationMap.jsx')) // the map library loa
  */
 export default function StationPicker({ onPick, onCancel, favorites = [], isFavorite = () => false, onToggleFavorite, near = null }) {
   const [showMap, setShowMap] = useState(false)
+  const [me, setMe] = useState(null) // the user's own position, once they ask for it
   const [stations, setStations] = useState(null)
   const [liveIds, setLiveIds] = useState(null)
   const [query, setQuery] = useState('')
@@ -81,6 +82,7 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
       if (id !== lookup.current) return // the user started typing while we waited
       setQuery('')
       setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy })
       setMessage('Nearest stations to you:')
     } catch (e) {
       if (id !== lookup.current) return
@@ -123,7 +125,7 @@ export default function StationPicker({ onPick, onCancel, favorites = [], isFavo
       {showMap && (
         <Suspense fallback={<p className="hint">Loading the map…</p>}>
           {stations
-            ? <StationMap stations={stations} liveIds={liveIds} liveOnly={liveOnly} center={origin ?? near} onPick={onPick} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />
+            ? <StationMap stations={stations} liveIds={liveIds} liveOnly={liveOnly} center={origin ?? near} me={me} focus={q.length >= 2 && !origin ? results : null} onLocate={findNearMe} locating={busy} onPick={onPick} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />
             : <p className="hint">Loading stations…</p>}
         </Suspense>
       )}

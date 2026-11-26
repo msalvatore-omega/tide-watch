@@ -61,7 +61,7 @@ tide** when the gauge's wind opposes the current.
 terms, and a glossary under ⓘ.
 
 Also: search by zip code, name, nearest or on a **map** (OpenStreetMap, loaded on
-demand), with tide-gauge badges; ★ favorites; a **share** button (picture card + link);
+demand; it follows the search and can show your own position), with tide-gauge badges; ★ favorites; a **share** button (picture card + link);
 installable to a phone's home screen; dark mode; no axe WCAG 2 AA violations;
 shareable links (`?station=8574680&tab=week`).
 

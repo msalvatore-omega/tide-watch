@@ -11,6 +11,15 @@
 
 export const CHANGELOG = [
   {
+    version: '1.17.0',
+    date: '2026-11-26',
+    title: 'Find yourself on the station map',
+    changes: [
+      { kind: 'new', text: 'The station map can show where you are: tap the target button on the map (or 📍 Nearest) and a blue dot marks your position, with the nearest stations listed beneath.' },
+      { kind: 'improved', text: 'The map follows your search: type a port or station name and it frames the matches, or enter a zip code and it moves there.' },
+    ],
+  },
+  {
     version: '1.16.0',
     date: '2026-11-26',
     title: 'Easier to read, and more to go on',
