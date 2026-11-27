@@ -375,7 +375,7 @@ function Tidely() {
                 </span>
               </div>
               <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit, ${moonAhead.replace(' d', ' days').replace('1 days', '1 day').replace('full', 'full moon').replace('new', 'new moon')}${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}${moonNextText ? `. Next ${moonNextText}` : ''}.`}>
-                <MoonDisc moon={moon} size={40} />
+                <MoonDisc moon={moon} size={64} />
                 <strong aria-hidden="true" className="hero-moon-name">{moon.name}</strong>
                 <small aria-hidden="true">{moonAhead}</small>
                 {moon.tides && <small aria-hidden="true">{moon.tides === 'spring' ? 'spring tides' : 'neap tides'}</small>}

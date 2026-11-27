@@ -1,3 +1,4 @@
+import { useId } from 'react'
 // Sun and moon as a picture: a 24-hour daylight bar with a marker for now, and the moon
 // drawn at its phase. (Wind, temperatures and barometer are drawn on the scene itself.)
 import Icon from './Icon.jsx'
@@ -15,19 +16,66 @@ export function freshWeather(weather, now) {
 }
 
 /** The moon as it looks tonight: lit part drawn from its age in the lunar month. */
+// The near side's dark plains (maria) as seen from the northern hemisphere: [cx, cy, rx, ry].
+const MARIA = [
+  [37, 31, 14, 12], [57, 32, 9, 9], [66, 45, 11, 9], [81, 36, 5, 6.5], [78, 57, 6, 8], [66, 61, 4.5, 4.5],
+  [21, 46, 9, 17], [40, 67, 10, 8], [26, 67, 5, 5], [46, 14, 19, 3.2], [49, 47, 5, 4],
+]
+// Bright young craters: [cx, cy, r].
+const CRATERS = [[45, 85, 2.6], [32, 49, 2.2], [20, 40, 1.4], [60, 76, 1.3], [72, 22, 1.2], [53, 60, 1.1]]
+
+/** The moon at its current phase: lit part with maria and craters, the rest in faint earthshine. */
 export function MoonDisc({ moon, size = 26 }) {
+  const id = useId().replace(/:/g, '')
   const k = moon.illumination // 0 new … 1 full
   const waxing = moon.age < 29.530588853 / 2
-  const r = 12
+  const r = 46
   const rx = r * Math.abs(1 - 2 * k)
+  const detail = size >= 30
+  // Lit limb on the right, then back along the terminator; mirrored when waning.
+  const lit = `M 50 ${50 - r} A ${r} ${r} 0 0 1 50 ${50 + r} A ${rx} ${r} 0 0 ${k > 0.5 ? 1 : 0} 50 ${50 - r} Z`
+  const features = (
+    <>
+      {MARIA.map(([cx, cy, mx, my]) => <ellipse key={`${cx}-${cy}`} cx={cx} cy={cy} rx={mx} ry={my} />)}
+    </>
+  )
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden="true" className="moon-disc">
-      <circle cx="14" cy="14" r={r} className="moon-dark" />
-      {/* the lit half (right when waxing, left when waning) … */}
-      <path d={`M 14 2 A ${r} ${r} 0 0 ${waxing ? 1 : 0} 14 26 Z`} className="moon-lit" />
-      {/* … widened to gibbous or narrowed to a crescent by an ellipse */}
-      <ellipse cx="14" cy="14" rx={rx} ry={r} className={k > 0.5 ? 'moon-lit' : 'moon-dark'} />
-      <circle cx="14" cy="14" r={r} className="moon-rim" />
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" className="moon-disc">
+      <defs>
+        <radialGradient id={`${id}s`} cx="42%" cy="38%" r="70%">
+          <stop offset="0" stopColor="#fdfbf2" />
+          <stop offset="0.7" stopColor="#ece6d3" />
+          <stop offset="1" stopColor="#c9c1a8" />
+        </radialGradient>
+        <clipPath id={`${id}c`}><circle cx="50" cy="50" r={r} /></clipPath>
+        <filter id={`${id}b`} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation={detail ? 2.2 : 0.01} /></filter>
+        <filter id={`${id}m`} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6" /></filter>
+        <mask id={`${id}k`}>
+          <g clipPath={`url(#${id}c)`}>
+            <path d={lit} fill="#fff" filter={`url(#${id}b)`} transform={waxing ? undefined : 'translate(100 0) scale(-1 1)'} />
+          </g>
+        </mask>
+      </defs>
+      {/* the unlit part, faintly visible */}
+      <circle cx="50" cy="50" r={r} fill="#3a4358" />
+      {detail && <g clipPath={`url(#${id}c)`} fill="#2c3447" opacity="0.8" filter={`url(#${id}m)`}>{features}</g>}
+      {/* the sunlit part */}
+      <g mask={`url(#${id}k)`}>
+        <circle cx="50" cy="50" r={r} fill={`url(#${id}s)`} />
+        {detail && (
+          <g clipPath={`url(#${id}c)`}>
+            <g fill="#8f8b7c" opacity="0.5" filter={`url(#${id}m)`}>{features}</g>
+            {CRATERS.map(([cx, cy, cr]) => (
+              <g key={`${cx}-${cy}`}>
+                <circle cx={cx} cy={cy} r={cr * 2.2} fill="#fffef8" opacity="0.35" />
+                <circle cx={cx} cy={cy} r={cr} fill="#fffef8" opacity="0.9" />
+                <circle cx={cx + cr * 0.25} cy={cy + cr * 0.25} r={cr * 0.55} fill="#b9b29b" opacity="0.7" />
+              </g>
+            ))}
+          </g>
+        )}
+      </g>
+      <circle cx="50" cy="50" r={r} className="moon-rim" style={{ strokeWidth: detail ? 1.6 : 6 }} />
     </svg>
   )
 }

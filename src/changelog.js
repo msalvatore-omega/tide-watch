@@ -11,6 +11,14 @@
 
 export const CHANGELOG = [
   {
+    version: '2.6.0',
+    date: '2026-11-27',
+    title: 'A better picture of the moon',
+    changes: [
+      { kind: 'improved', text: 'The moon on the main picture is larger and drawn like the real thing, with its dark seas and bright craters, a soft edge to the shadow, and the unlit part faintly visible.' },
+    ],
+  },
+  {
     version: '2.5.0',
     date: '2026-11-27',
     title: 'The moon phase, named',
