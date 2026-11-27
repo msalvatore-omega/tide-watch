@@ -1086,3 +1086,15 @@ h1 .icon { color: var(--brand); }
 .moon-row { margin-top: 4px; }
 .moon-row span { display: inline-flex; align-items: center; gap: 4px; }
 @media (max-width: 420px) { .hero-height { font-size: 2.5rem; } .hero-top { gap: 9px; } .hero-state strong { font-size: 1rem; white-space: nowrap; } }
+
+/* ---------- Tide graph scrolls sideways into the coming week ---------- */
+.chart-wide { position: relative; display: flex; align-items: flex-start; flex-wrap: wrap; }
+.chart-gauge { flex: none; }
+.chart-scroll { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; border-radius: 8px; }
+.chart-scroll::-webkit-scrollbar { display: none; }
+.chart-scroll:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.chart-scroll svg { overflow: hidden; }
+.chart-over { position: absolute; top: 0; right: 0; pointer-events: none; }
+.chart .tick.day { font-weight: 700; fill: var(--ink); }
+.chart-now { position: absolute; top: 0; right: 0; min-height: 32px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: var(--ink); font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; box-shadow: 0 1px 4px rgb(0 0 0 / 0.15); }
+.chart-wide .legend-line { flex-basis: 100%; }

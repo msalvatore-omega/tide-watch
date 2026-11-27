@@ -35,7 +35,7 @@ export const EXPLAIN = {
     title: 'The tide now',
     how: [
       'The big figure is the height of tide now, and whether it is flooding or ebbing. The gauge on the left is filled to that height, on the same scale as the curve beside it.',
-      'The curve runs from 9 hours ago to 24 hours ahead: dashed blue is the prediction, red is what the gauge has measured, and the red dashed line is now. Dots mark high and low water; the orange line is flood stage.',
+      'The curve starts 9 hours ago and runs 7 days ahead: slide it sideways with your thumb to look into the coming week, and press Now to come back. Dashed blue is the prediction, red is what the gauge has measured, and the red dashed line is now. Dots mark high and low water; the orange line is flood stage.',
       'The moon at the top is drawn at tonight\'s phase; near new and full moon the tides are springs, with larger ranges. Beneath are the next high and low water, and the wind, air and sea temperature and barometer at the gauge.',
     ],
     terms: ['height of tide', 'high water', 'low water', 'flood', 'ebb', 'observed', 'predicted', 'flood stage', 'springs', 'neaps', 'chart datum', 'knot', 'barometer'],

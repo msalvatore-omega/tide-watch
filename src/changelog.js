@@ -11,6 +11,16 @@
 
 export const CHANGELOG = [
   {
+    version: '2.4.0',
+    date: '2026-11-27',
+    title: 'Slide the tide graph into the coming week',
+    changes: [
+      { kind: 'new', text: 'The main tide graph now slides sideways: drag it with your thumb to see high and low water for the next 7 days, with each day marked along the bottom.' },
+      { kind: 'new', text: 'A Now button appears once you have slid ahead, to bring the graph straight back to the present.' },
+      { kind: 'improved', text: 'The height gauge stays in place at the left while the graph slides, so heights can always be read off the same scale.' },
+    ],
+  },
+  {
     version: '2.3.0',
     date: '2026-11-26',
     title: 'Moonrise and moonset',

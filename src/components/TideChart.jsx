@@ -1,31 +1,44 @@
 import { useEffect, useRef, useState } from 'react'
 import { heightAt, seriesAt, offsetAt, formatStationTime, formatAtStation, ft, hNum, isMetric } from '../tides.js'
 
-const BASE_PAD = { top: 44, bottom: 50, left: 12, right: 12 }
+const PAD = { top: 44, bottom: 50, left: 6, right: 14 }
+const GAUGE_W = 58
 const PAST_H = 9
-const FUTURE_H = 24
+const SCREEN_H = 33 // hours across one screen-width
+const FUTURE_H = 7 * 24
 
 /**
- * Tide from 9 hours ago to 24 hours ahead: the forecast (NOAA's exact 6-minute
+ * Tide from 9 hours ago to 7 days ahead, scrolled sideways (one screen is about 33
+ * hours): the forecast (NOAA's exact 6-minute
  * predictions where loaded, else interpolated from highs/lows), with the gauge's
  * measured water drawn over it when the station has a gauge.
  */
 export default function TideChart({ events, now, predicted, observed, flood, gauge = false }) {
-  const [ref, width] = useWidth()
-  // With `gauge`, a level gauge stands at the left on the same scale as the curve.
+  const [ref, full] = useWidth()
+  const scroller = useRef(null)
+  const [away, setAway] = useState(false)
+  // With `gauge`, a level gauge stands still at the left on the same scale as the curve.
   const HEIGHT = gauge ? 230 : 190
-  const PAD = gauge ? { ...BASE_PAD, left: 62 } : BASE_PAD
+  const view = Math.max(0, full - (gauge ? GAUGE_W : 0)) // visible width of the scrolling part
+  const pxPerHour = (view - PAD.left - PAD.right) / SCREEN_H
+  const width = Math.round(PAD.left + PAD.right + pxPerHour * (PAST_H + FUTURE_H))
 
   const start = now.getTime() - PAST_H * 3600e3
   const end = now.getTime() + FUTURE_H * 3600e3
   const samples = []
+  const fineEnd = predicted?.length ? predicted.at(-1).time.getTime() : 0
   for (let t = start; t <= end; t += 10 * 60e3) {
-    const h = seriesAt(predicted, t) ?? heightAt(events, new Date(t))
+    // NOAA's 6-minute forecast where loaded, easing into the curve drawn through the
+    // highs and lows over its last two hours so the join does not show.
+    const fine = seriesAt(predicted, t)
+    const coarse = heightAt(events, new Date(t))
+    const w = fine == null ? 0 : coarse == null ? 1 : Math.min(1, (fineEnd - t) / 7200e3)
+    const h = fine == null ? coarse : w * fine + (1 - w) * coarse
     if (h != null) samples.push([t, h])
   }
   const measured = (observed ?? []).filter((p) => p.time >= start).map((p) => [p.time.getTime(), p.height])
   const shown = events.filter((e) => e.time >= start && e.time <= end)
-  if (!width || samples.length < 2) return <div ref={ref} className="chart" style={{ height: HEIGHT }} />
+  if (view < 80 || samples.length < 2) return <div ref={ref} className="chart" style={{ height: HEIGHT }} />
 
   const hs = [...samples, ...measured].map((s) => s[1])
   const lo = Math.min(...hs)
@@ -50,41 +63,75 @@ export default function TideChart({ events, now, predicted, observed, flood, gau
   const HALF_HOUR = 30 * 60e3
   for (let t = Math.ceil(start / HALF_HOUR) * HALF_HOUR; t <= end; t += HALF_HOUR) {
     const wall = new Date(t + offsetAt(events, t))
-    if (wall.getUTCMinutes() === 0 && wall.getUTCHours() % 6 === 0) ticks.push(new Date(t))
+    if (wall.getUTCMinutes() === 0 && wall.getUTCHours() % 6 === 0) ticks.push({ t: new Date(t), midnight: wall.getUTCHours() === 0 })
   }
 
+  const days = Math.round(FUTURE_H / 24)
+  const summary = shown.filter((e) => e.time > now).slice(0, 8)
+    .map((e) => `${e.type === 'H' ? 'high water' : 'low water'} ${formatStationTime(e.local)} ${ft(e.height)}`).join(', ')
+  const top = PAD.top - 8
+  const bottom = HEIGHT - PAD.bottom
+  const level = latest ? latest[1] : forecastNow
+  const ly = level != null ? Math.min(bottom, Math.max(top, y(level))) : bottom
+
   return (
-    <div ref={ref} className="chart">
-      <svg width={width} height={HEIGHT} role="img" aria-label="Height of tide: observed and predicted, 9 hours ago to 24 hours ahead">
+    <div ref={ref} className="chart chart-wide">
+      {gauge && (() => {
+        const step = isMetric() ? (hi - lo > 3 / 0.3048 ? 1 / 0.3048 : 0.5 / 0.3048) : hi - lo > 9 ? 2 : hi - lo > 4.5 ? 1 : 0.5
+        const marks = []
+        for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) marks.push(v)
+        return (
+          <svg className="chart-gauge" width={GAUGE_W} height={HEIGHT} aria-hidden="true">
+            <rect x="8" y={top} width="18" height={bottom - top} rx="5" className="gauge-track" />
+            <rect x="8" y={ly} width="18" height={bottom - ly} rx="5" className="gauge-fill" />
+            {marks.map((v) => (
+              <g key={v}>
+                <line x1="26" x2="31" y1={y(v)} y2={y(v)} className="gauge-tick" />
+                <text x="34" y={y(v) + 4} className="tick">{hNum(v).replace(/\.0+$/, '')}</text>
+              </g>
+            ))}
+            {flood?.minor != null && flood.minor <= hi && <line x1="4" x2="30" y1={y(flood.minor)} y2={y(flood.minor)} className="flood-line" />}
+            {level != null && !away && <line x1="26" x2={GAUGE_W} y1={ly} y2={ly} className="gauge-lead" />}
+            <text x="8" y={bottom + 14} className="tick">{isMetric() ? 'm' : 'ft'}</text>
+          </svg>
+        )
+      })()}
+      <div
+        ref={scroller}
+        className="chart-scroll"
+        tabIndex={0}
+        role="group"
+        aria-label={`Tide graph. Scroll sideways to see the next ${days} days.`}
+        onScroll={(e) => setAway(e.currentTarget.scrollLeft > view * 0.35)}
+      >
+      <svg width={width} height={HEIGHT} role="img" aria-label={`Height of tide, observed and predicted, from 9 hours ago to ${days} days ahead. Next: ${summary}.`}>
         <defs>
           <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#3aa0e6" stopOpacity="0.4" />
             <stop offset="1" stopColor="#3aa0e6" stopOpacity="0.04" />
           </linearGradient>
         </defs>
-        {ticks.map((t) => (
+        {ticks.map(({ t, midnight }) => (
           <g key={t.getTime()}>
-            <line x1={x(t)} x2={x(t)} y1={PAD.top - 8} y2={HEIGHT - 22} stroke="currentColor" opacity="0.1" />
-            <text x={x(t)} y={HEIGHT - 6} textAnchor="middle" className="tick">
-              {formatAtStation(t, offsetAt(events, t), { hour: 'numeric' })}
+            <line x1={x(t)} x2={x(t)} y1={midnight ? 20 : top} y2={HEIGHT - 22} stroke="currentColor" opacity={midnight ? 0.28 : 0.1} />
+            <text x={x(t)} y={HEIGHT - 6} textAnchor="middle" className={midnight ? 'tick day' : 'tick'}>
+              {formatAtStation(t, offsetAt(events, t), midnight ? { weekday: 'short', day: 'numeric' } : { hour: 'numeric' })}
             </text>
           </g>
         ))}
         {floodLines.length > 0 && (
-          <rect x={PAD.left} y={PAD.top - 8} width={width - PAD.left - PAD.right} height={Math.max(0, y(flood.minor) - PAD.top + 8)} className="flood-zone" />
+          <rect x={0} y={top} width={width} height={Math.max(0, y(flood.minor) - top)} className="flood-zone" />
         )}
         {floodLines.map(([name, v]) => (
-          <g key={name}>
-            <line x1={PAD.left} x2={width - PAD.right} y1={y(v)} y2={y(v)} className="flood-line" />
-            <text x={width - PAD.right} y={y(v) - 4} textAnchor="end" className="flood-label">{name} flood stage {ft(v)}</text>
-          </g>
+          <line key={name} x1={0} x2={width} y1={y(v)} y2={y(v)} className="flood-line" />
         ))}
+        {level != null && <line x1={0} x2={nowX} y1={ly} y2={ly} className="gauge-lead" />}
         <path d={toArea(samples, line)} fill="url(#chartFill)" />
         <path d={line} fill="none" className="line-forecast" strokeWidth="2" strokeDasharray={measured.length ? '5 4' : undefined} />
         {measured.length > 1 && <path d={toPath(measured)} fill="none" stroke="#e5484d" strokeWidth="2.5" />}
         {shown.map((e) => {
           const ex = x(e.time)
-          const anchor = ex < PAD.left + 38 ? 'start' : ex > width - 50 ? 'end' : 'middle'
+          const anchor = ex < 34 ? 'start' : ex > width - 50 ? 'end' : 'middle'
           const ey = y(e.height)
           const above = e.type === 'H'
           return (
@@ -99,36 +146,25 @@ export default function TideChart({ events, now, predicted, observed, flood, gau
             </g>
           )
         })}
-        {gauge && (() => {
-          const level = latest ? latest[1] : forecastNow
-          const top = PAD.top - 8
-          const bottom = HEIGHT - PAD.bottom
-          const step = isMetric() ? (hi - lo > 3 / 0.3048 ? 1 / 0.3048 : 0.5 / 0.3048) : hi - lo > 9 ? 2 : hi - lo > 4.5 ? 1 : 0.5
-          const marks = []
-          for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) marks.push(v)
-          const ly = level != null ? Math.min(bottom, Math.max(top, y(level))) : bottom
-          return (
-            <g className="gauge" aria-hidden="true">
-              <rect x="8" y={top} width="18" height={bottom - top} rx="5" className="gauge-track" />
-              <rect x="8" y={ly} width="18" height={bottom - ly} rx="5" className="gauge-fill" />
-              {marks.map((v) => (
-                <g key={v}>
-                  <line x1="26" x2="31" y1={y(v)} y2={y(v)} className="gauge-tick" />
-                  <text x="34" y={y(v) + 4} className="tick">{hNum(v).replace(/\.0+$/, '')}</text>
-                </g>
-              ))}
-              {flood?.minor != null && flood.minor <= hi && <line x1="4" x2="30" y1={y(flood.minor)} y2={y(flood.minor)} className="flood-line" />}
-              {level != null && <line x1="26" x2={nowX} y1={ly} y2={ly} className="gauge-lead" />}
-              <text x="8" y={bottom + 14} className="tick">{isMetric() ? 'm' : 'ft'}</text>
-            </g>
-          )
-        })()}
         <line x1={nowX} x2={nowX} y1={22} y2={HEIGHT - PAD.bottom} stroke="#ff4d4d" strokeWidth="2" strokeDasharray="4 3" />
         {forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="4" className="dot-now-forecast" strokeWidth="2" />}
         {latest && <circle cx={x(latest[0])} cy={y(latest[1])} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
         {!latest && forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
-        <text x={Math.max(nowX - 4, 4)} y={14} textAnchor="end" className="evt now">Now</text>
+        <text x={nowX - 4} y={14} textAnchor="end" className="evt now">Now</text>
       </svg>
+      </div>
+      {floodLines.length > 0 && (
+        <svg className="chart-over" width={view} height={HEIGHT} aria-hidden="true">
+          {floodLines.map(([name, v]) => (
+            <text key={name} x={view - PAD.right} y={y(v) - 4} textAnchor="end" className="flood-label">{name} flood stage {ft(v)}</text>
+          ))}
+        </svg>
+      )}
+      {away && (
+        <button type="button" className="chart-now" onClick={() => scroller.current?.scrollTo({ left: 0, behavior: 'smooth' })}>
+          ‹ Now
+        </button>
+      )}
       <p className="legend-line" aria-hidden="true">
         {measured.length > 0 && <span><i className="lgl obs" /> observed</span>}
         <span><i className={measured.length ? 'lgl pred dashed' : 'lgl pred'} /> predicted</span>

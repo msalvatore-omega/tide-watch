@@ -23,7 +23,7 @@ Every graphic carries a spoken description for screen readers.
 
 **Now**
 - **One graphic**: the height of tide in large figures with flood/ebb/stand, a level
-  gauge, and the tide curve on the same scale (9 hours back to 24 ahead): observed water
+  gauge, and the tide curve on the same scale (9 hours back, scrolling sideways to 7 days ahead): observed water
   over the prediction, HW/LW marked, flood stage drawn in.
 - **Next high and low water** side by side, soonest first, then one line of present
   conditions (wind, air and sea temperature, barometer with trend).

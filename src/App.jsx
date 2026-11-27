@@ -375,7 +375,7 @@ function Tidely() {
               </div>
               <Explain id="scene" />
             </div>
-            <TideChart gauge events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
+            <TideChart key={station.id} gauge events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
             <div className="hero-next">
               {[tide.nextHigh, tide.nextLow].sort((x, y) => x.time - y.time).map((e) => (
                 <div key={e.type} className={e.type === 'H' ? 'next high' : 'next low'}>
