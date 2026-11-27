@@ -11,6 +11,15 @@
 
 export const CHANGELOG = [
   {
+    version: '2.5.0',
+    date: '2026-11-27',
+    title: 'The moon phase, named',
+    changes: [
+      { kind: 'new', text: 'The moon on the main picture now has its phase written underneath, such as "Waxing gibbous", so you can tell where the moon is in its cycle at a glance.' },
+      { kind: 'new', text: 'Beneath the phase it says how many days until the next full or new moon, and whether tides are springs or neaps.' },
+    ],
+  },
+  {
     version: '2.4.0',
     date: '2026-11-27',
     title: 'Slide the tide graph into the coming week',

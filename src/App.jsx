@@ -249,6 +249,12 @@ function Tidely() {
   const moon = moonPhase(now)
   const moonToday = hasCoords ? moonTimes(now, station.lat, station.lng, tide.offsetMs) : null
   const moonNext = hasCoords ? nextMoonEvent(now, station.lat, station.lng, tide.offsetMs) : null
+  // Which comes next, full or new moon, and in how many days.
+  const moonAhead = (() => {
+    const full = moon.nextFull < moon.nextNew
+    const days = Math.round(((full ? moon.nextFull : moon.nextNew) - now) / 86400e3)
+    return `${full ? 'full' : 'new'} ${days < 1 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} d`}`
+  })()
   const moonNextText = moonNext ? `${moonNext.type === 'rise' ? 'moonrise' : 'moonset'} ${formatAtStation(moonNext.time, tide.offsetMs)}` : ''
   const isStand = live?.trend === 'steady'
   const heroState = isStand ? { glyph: '◆', text: 'Stand', cls: 'stand' } : view?.rising ? { glyph: '▲', text: 'Flood tide', cls: 'flood' } : { glyph: '▼', text: 'Ebb tide', cls: 'ebb' }
@@ -368,9 +374,11 @@ function Tidely() {
                     : '○ predicted'}
                 </span>
               </div>
-              <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}${moonNextText ? `. Next ${moonNextText}` : ''}.`}>
+              <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit, ${moonAhead.replace(' d', ' days').replace('1 days', '1 day').replace('full', 'full moon').replace('new', 'new moon')}${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}${moonNextText ? `. Next ${moonNextText}` : ''}.`}>
                 <MoonDisc moon={moon} size={40} />
-                <small aria-hidden="true">{moon.tides === 'spring' ? 'springs' : moon.tides === 'neap' ? 'neaps' : `${Math.round(moon.illumination * 100)}%`}</small>
+                <strong aria-hidden="true" className="hero-moon-name">{moon.name}</strong>
+                <small aria-hidden="true">{moonAhead}</small>
+                {moon.tides && <small aria-hidden="true">{moon.tides === 'spring' ? 'spring tides' : 'neap tides'}</small>}
                 {moonNext && <small aria-hidden="true" className="hero-moon-next">{moonNext.type === 'rise' ? '↑' : '↓'} {formatAtStation(moonNext.time, tide.offsetMs)}</small>}
               </div>
               <Explain id="scene" />
