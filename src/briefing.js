@@ -27,9 +27,10 @@ export function localBriefing({ now, events, tide, live, forecastNow, alerts = [
   }
 
   // 2. Next high and low water, in the order they come.
-  const [first, second] = [tide.nextHigh, tide.nextLow].sort((a, b) => a.time - b.time)
+  // (Near the end of the loaded predictions only one of them may be left.)
+  const [first, second] = [tide.nextHigh, tide.nextLow].filter(Boolean).sort((a, b) => a.time - b.time)
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
-  out.push(`${cap(water(first))} at ${time(first)} (${ft(first.height)}), then ${water(second)} at ${time(second)} (${ft(second.height)}).`)
+  if (first) out.push(`${cap(water(first))} at ${time(first)} (${ft(first.height)})${second ? `, then ${water(second)} at ${time(second)} (${ft(second.height)})` : ''}.`)
 
   // 3. Coastal flooding: at flood stage now, or a high water in the next day could reach it.
   if (flood) {

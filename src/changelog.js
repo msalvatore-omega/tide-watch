@@ -11,6 +11,20 @@
 
 export const CHANGELOG = [
   {
+    version: '2.6.2',
+    date: '2026-11-28',
+    title: 'Fixes from a full check of the app',
+    changes: [
+      { kind: 'fixed', text: 'After a long spell offline the page could fail with "Something went wrong" when the saved tides were nearly or fully used up. It now shows what it still has, or the message asking you to reconnect.' },
+      { kind: 'fixed', text: 'On the Plan page, a tidal window you tapped could deselect itself within half a minute. Your choice now stays put.' },
+      { kind: 'fixed', text: 'The minutes for "Fish the turn" and the heights in your own rules can now be typed normally; before, the figure changed under your fingers as you typed.' },
+      { kind: 'fixed', text: 'With metres chosen, the printed tide table, the Plan controls and the depth at current stations no longer say feet.' },
+      { kind: 'fixed', text: 'A tide gauge that is only temporarily out of action is now described as "not reporting" instead of the station being said to have no gauge.' },
+      { kind: 'fixed', text: 'The Currents page left open for a day or more no longer runs out of predictions; it fetches fresh ones every few hours.' },
+      { kind: 'improved', text: 'The history search at some stations could download a very large amount of gauge data. It now looks back no more than about four months of unverified readings, saving time and mobile data.' },
+    ],
+  },
+  {
     version: '2.6.1',
     date: '2026-11-28',
     title: 'Moon picture fixes',

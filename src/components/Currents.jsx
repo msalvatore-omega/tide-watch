@@ -7,7 +7,7 @@ import { fetchCurrentStations, fetchCurrents, distanceMiles } from '../noaa.js'
 import { currentNow, speedAt, compass, windAgainstCurrent } from '../currents.js'
 import { Explain } from './Explain.jsx'
 import { useWidth } from './useWidth.js'
-import { offsetAt, formatAtStation, formatCountdown, stationDate, formatDay, nmText } from '../tides.js'
+import { offsetAt, formatAtStation, formatCountdown, stationDate, formatDay, nmText, isMetric } from '../tides.js'
 
 const CHOICE_KEY = 'tidely.currentStation.v1' // { [tideStationId]: currentStationId }
 const loadChoices = () => { try { return JSON.parse(localStorage.getItem(CHOICE_KEY)) ?? {} } catch { return {} } }
@@ -38,15 +38,19 @@ export default function Currents({ station, events: tideEvents, now, wind }) {
   const selectedId = selected?.id
   const selectedBin = selected?.bin
 
+  // The predictions run 48 hours ahead; fetch again every 6 hours so a tab left open
+  // never runs out.
+  const refresh = Math.floor(now.getTime() / (6 * 3600e3))
   useEffect(() => {
     if (!selectedId) return
     let cancelled = false
     setData((d) => (d.id === selectedId ? d : { status: 'loading', id: selectedId }))
     fetchCurrents(selectedId, selectedBin)
       .then((events) => !cancelled && setData({ status: 'ok', id: selectedId, events }))
-      .catch((e) => !cancelled && setData({ status: 'error', id: selectedId, message: e.message }))
+      // a failed refresh keeps what is already showing
+      .catch((e) => !cancelled && setData((d) => (d.status === 'ok' && d.id === selectedId ? d : { status: 'error', id: selectedId, message: e.message })))
     return () => { cancelled = true }
-  }, [selectedId, selectedBin])
+  }, [selectedId, selectedBin, refresh])
 
   const pick = (id) => {
     setChoice(id)
@@ -83,7 +87,7 @@ export default function Currents({ station, events: tideEvents, now, wind }) {
         <Explain id="currents" />
         <select className="cur-select" value={selected.id} onChange={(e) => pick(e.target.value)} aria-label="Current station">
           {nearby.map((s) => (
-            <option key={s.id} value={s.id}>{s.name} · {nmText(s.miles)}{s.depth != null ? ` · ${Math.round(s.depth)} ft` : ''}</option>
+            <option key={s.id} value={s.id}>{s.name} · {nmText(s.miles)}{s.depth != null ? ` · ${isMetric() ? `${Math.round(s.depth * 0.3048)} m` : `${Math.round(s.depth)} ft`}` : ''}</option>
           ))}
         </select>
       </div>

@@ -64,6 +64,25 @@ export function useNearestLiveGauge(station, wanted) {
   return wanted && nearest?.forId === station?.id ? nearest : null
 }
 
+/**
+ * Whether NOAA lists this station as having a live tide gauge: true, false, or null while
+ * unknown. Asked only when `wanted` (the gauge returned nothing), to tell "no gauge here"
+ * from "the gauge is not reporting just now".
+ */
+export function useGaugeListed(station, wanted) {
+  const [state, setState] = useState(null)
+  const id = station?.id
+  useEffect(() => {
+    if (!wanted || !id) return
+    let cancelled = false
+    fetchLiveStations()
+      .then((all) => !cancelled && setState({ id, listed: all.some((s) => s.id === id) }))
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [id, wanted])
+  return wanted && state?.id === id ? state.listed : null
+}
+
 /** Whether the device has a network connection (updates live). */
 export function useOnline() {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))

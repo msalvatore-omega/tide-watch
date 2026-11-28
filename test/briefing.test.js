@@ -23,6 +23,12 @@ describe('at-a-glance briefing (no AI)', () => {
     expect(lines.join(' ')).not.toMatch(/flood stage/) // "flooding" here means the tide making, not coastal flooding
     expect(lines.length).toBeLessThanOrEqual(4)
   })
+  it('copes when only one more high or low water is left in the loaded predictions', async () => {
+    const c = await ctx({ live: null, alerts: [] })
+    const lines = localBriefing({ ...c, tide: { ...c.tide, nextLow: undefined } })
+    expect(lines[1]).toMatch(/^High water at 7:06\sPM \(1\.8 ft\)\.$/)
+    expect(() => localBriefing({ ...c, tide: { ...c.tide, nextLow: undefined, nextHigh: undefined } })).not.toThrow()
+  })
   it('falls back to the forecast without a gauge, and stays quiet about a small gap', async () => {
     const noGauge = localBriefing(await ctx({ live: null }))
     expect(noGauge[0]).toMatch(/^Predicted height of tide is about \d\.\d ft, flooding \(no gauge observation\)\.$/)

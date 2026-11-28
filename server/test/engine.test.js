@@ -122,10 +122,27 @@ test('swings: notifies ~3 hours before each big swing, once', async () => {
   const msg = delivered.find((d) => d.tag === `${STATION}:${upcoming.from.time.toISOString()}`)
   assert.ok(msg, 'swing notification uses the same tag as the app')
   assert.match(msg.title, /^Large tidal range at Baltimore$/)
-  assert.match(msg.body, /^(Rise|Fall) of \d+\.\d ft: (LW|HW) \d{1,2}:\d{2} [AP]M to (HW|LW) \d{1,2}:\d{2} [AP]M\.$/)
+  assert.match(msg.body, /^(Rise|Fall) of \d+\.\d ft: (LW|HW) \d{2}:\d{2} to (HW|LW) \d{2}:\d{2}\.$/)
   const count = delivered.length
   await engine.check(before + 5 * 60e3)
   assert.equal(delivered.length, count, 'no repeat')
+})
+
+test('swings: one subscription that cannot be sent to does not stop the others', async () => {
+  const events = await fetchHiLo(STATION)
+  const { alerts } = findAlerts(events, new Date(NOW), { mode: 'auto' })
+  const upcoming = alerts.find((a) => a.from.time > NOW)
+  const before = upcoming.from.time.getTime() - 2 * 3600e3
+  await subscribe(devices.tablet, { mode: 'auto', surgeFeet: null }) // checked first
+  await subscribe(devices.phone, { mode: 'auto', surgeFeet: null })
+  // An older stored row whose key is not a point on the curve (encryption throws).
+  const offCurve = Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 7)]).toString('base64url')
+  const bad = { ...devices.tablet.subscription, keys: { ...devices.tablet.subscription.keys, p256dh: offCurve } }
+  engine.sql.exec('UPDATE subs SET sub = ? WHERE sub = ?', JSON.stringify(bad), JSON.stringify(devices.tablet.subscription))
+  const start = delivered.length
+  const run = await engine.check(before)
+  assert.ok(run.errors >= 1, 'the bad subscription is counted as an error')
+  assert.ok(delivered.slice(start).some((d) => d.device === 'phone' && d.tag === `${STATION}:${upcoming.from.time.toISOString()}`), 'the phone still gets its alert')
 })
 
 test('expired subscriptions (410 Gone) are removed', async () => {
@@ -152,6 +169,10 @@ test('rejects bad input', async () => {
   await assert.rejects(engine.subscribe({ subscription: devices.phone.subscription, stationId: '../etc' }), /Invalid station/)
   const junkKeys = { endpoint: 'https://push.example.com/x', keys: { p256dh: 'BPx', auth: 'AAA' } }
   await assert.rejects(engine.subscribe({ subscription: junkKeys, stationId: STATION }), /Invalid push subscription/)
+  // right length and leading byte, but not a point on the curve: could never be encrypted to
+  const offCurve = Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 7)]).toString('base64url')
+  const badPoint = { endpoint: 'https://push.example.com/y', keys: { p256dh: offCurve, auth: devices.phone.subscription.keys.auth } }
+  await assert.rejects(engine.subscribe({ subscription: badPoint, stationId: STATION }), /Invalid push subscription/)
 })
 
 test('test notification, rate limited to once a minute', async () => {

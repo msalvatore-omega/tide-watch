@@ -28,7 +28,7 @@ globalThis.fetch = async (url) => {
 }
 
 /** Stand-in for the Anthropic client: records requests, returns a canned reply. */
-function fakeClaude(reply = { stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'High at 7:06 PM, 1.8 ft.' }], model: 'claude-opus-5-5', usage: { input_tokens: 900, output_tokens: 60 } }) {
+function fakeClaude(reply = { stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'High at 19:06, 1.8 ft.' }], model: 'claude-opus-5-5', usage: { input_tokens: 900, output_tokens: 60 } }) {
   const calls = []
   const create = async (params) => { calls.push(params); if (reply instanceof Error) throw reply; return reply }
   return { calls, beta: { messages: { create } }, messages: { create } }
@@ -43,13 +43,13 @@ beforeEach(() => {
 test('context contains the facts the model is allowed to use, in station-local time', async () => {
   const context = await buildContext(STATION, await fetchHiLo(STATION), NOW)
   assert.match(context, /^<station_data>\nStation: Baltimore, MD \(NOAA 8574680\)/)
-  assert.match(context, /Local date and time now: 2026-11-25 3:\d\d PM/)
+  assert.match(context, /Local date and time now: 2026-11-25 15:\d\d/)
   assert.match(context, /Gauge reading \(5 min ago\): \d\.\d ft, (rising|falling|steady); \d\.\d ft above predicted/)
-  assert.match(context, /Wed 7:06 PM 11-25 {2}High 1\.8 ft\n/)
-  assert.match(context, /Wed 12:03 PM 11-25 {2}Low -0\.2 ft \(already passed\)/)
+  assert.match(context, /Wed 19:06 11-25 {2}High 1\.8 ft\n/)
+  assert.match(context, /Wed 12:03 11-25 {2}Low -0\.2 ft \(already passed\)/)
   assert.match(context, /Flooding starts at: minor 3\.4 ft, moderate 4\.3 ft, major 5\.6 ft\./)
   assert.match(context, /Weather at the gauge now: wind ENE 9 mph \(8 kt\), gusts 14 mph; water 64°F\./)
-  assert.match(context, /Sun 2026-11-25: rises 7:00 AM, sets 4:46 PM\./)
+  assert.match(context, /Sun 2026-11-25: rises 0?7:00, sets 16:46\./)
   assert.match(context, /Moon: Full moon \(spring tides/)
   assert.match(context, /Unusually large swings[\s\S]*under way now/)
   assert.ok(context.length < 6000, `context should stay compact (was ${context.length} chars)`)
@@ -57,7 +57,7 @@ test('context contains the facts the model is allowed to use, in station-local t
 
 test('briefing: one Claude call, then shared from cache for 30 minutes', async () => {
   const first = await engine.aiBriefing(STATION, 'visitor-a', NOW)
-  assert.equal(first.text, 'High at 7:06 PM, 1.8 ft.')
+  assert.equal(first.text, 'High at 19:06, 1.8 ft.')
   assert.equal(first.cached, false)
   const again = await engine.aiBriefing(STATION, 'visitor-b', NOW + 10 * 60e3)
   assert.equal(again.cached, true)

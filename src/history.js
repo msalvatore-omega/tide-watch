@@ -5,6 +5,8 @@ import { fetchMonthlyExtremes, fetchMonthDetail, fetchRecentDaily, fetchDatums, 
 
 const DAY = 86400e3
 
+const MAX_GAP_DAYS = 120
+
 /**
  * Most recent time before `before` that the water was at least `level` (dir 'high')
  * or at most `level` (dir 'low'). Searches, newest first:
@@ -25,7 +27,12 @@ export async function lastBeyond(stationId, level, dir, { before, observed = [],
   const lastVerified = months.at(-1)
   const gapStart = lastVerified ? new Date(Date.UTC(lastVerified.y, lastVerified.m, 1)) : new Date(before.getTime() - 60 * DAY)
   if (gapStart < before) {
-    const days = await fetchRecentDaily(stationId, gapStart, offsetMs)
+    // Where the verified records stop long ago, look back through raw gauge data for
+    // MAX_GAP_DAYS only: each month of it is a large download.
+    // (from the 1st of a month, so the saved copy is reused from day to day)
+    const cap = new Date(before.getTime() - MAX_GAP_DAYS * DAY)
+    const from = new Date(Math.max(gapStart.getTime(), Date.UTC(cap.getUTCFullYear(), cap.getUTCMonth(), 1)))
+    const days = await fetchRecentDaily(stationId, from, offsetMs)
     for (let i = days.length - 1; i >= 0; i--) {
       const d = days[i]
       const time = dir === 'high' ? d.maxTime : d.minTime

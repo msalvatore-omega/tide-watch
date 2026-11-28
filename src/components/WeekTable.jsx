@@ -3,7 +3,7 @@
 import Icon from './Icon.jsx'
 import { Explain } from './Explain.jsx'
 import { useState } from 'react'
-import { heightAt, formatStationTime, formatAtStation, offsetAt, stationDate, formatDay, isClock24, hNum, ft } from '../tides.js'
+import { heightAt, formatStationTime, formatAtStation, offsetAt, stationDate, formatDay, isClock24, isMetric, hNum, ft } from '../tides.js'
 import { sunTimes, moonPhase } from '../astro.js'
 import { floodStage } from '../history.js'
 import { MoonDisc } from './Instruments.jsx'
@@ -99,7 +99,7 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
           <button type="button" className="link small" onClick={() => window.print()} aria-label="Print the tide table"><Icon name="print" /></button>
         </div>
       </div>
-      <p className="hint print-only">{station?.name}{station?.state ? `, ${station.state}` : ''} · heights in feet above chart datum (MLLW) · station time</p>
+      <p className="hint print-only">{station?.name}{station?.state ? `, ${station.state}` : ''} · heights in {isMetric() ? 'metres' : 'feet'} above chart datum (MLLW) · station time</p>
 
       <div className={view === 'chart' ? 'week-strips' : 'week-strips hidden'}>
         <div className="strip-row axis" aria-hidden="true">

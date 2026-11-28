@@ -4,8 +4,10 @@ import Anthropic from '@anthropic-ai/sdk'
 import { fetchStationInfo, fetchLive, fetchConditions, fetchFloodLevels } from '../../src/noaa.js'
 import { findAlerts } from '../../src/alerts.js'
 import { liveNow, diffText } from '../../src/surge.js'
-import { heightAt, offsetAt, formatStationTime, formatAtStation, stationDate } from '../../src/tides.js'
+import { heightAt, offsetAt, formatStationTime, formatAtStation, stationDate, setClock24 } from '../../src/tides.js'
 import { sunTimes, moonPhase } from '../../src/astro.js'
+
+setClock24(true) // times go to the model, and back to the boater, on the 24-hour clock
 
 const SYSTEM = `You write for Tidely, a tide app used by boaters, anglers, paddlers and people who live near the water.
 

@@ -4,7 +4,7 @@
 import Icon from './Icon.jsx'
 import { Explain } from './Explain.jsx'
 import { useRef, useState } from 'react'
-import { heightAt, offsetAt, stationDate, formatDay, formatAtStation, formatDuration, isClock24, ft } from '../tides.js'
+import { heightAt, offsetAt, stationDate, formatDay, formatAtStation, formatDuration, isClock24, isMetric, ft } from '../tides.js'
 import { isNight, sunTimes } from '../astro.js'
 import { diffText } from '../surge.js'
 import { useWidth } from './useWidth.js'
@@ -21,7 +21,10 @@ const save = (v) => { try { localStorage.setItem(KEY, JSON.stringify(v)) } catch
 export function findWindows(events, from, to, dir, feet, allowed = () => true) {
   const windows = []
   let cur = null
-  for (let t = from.getTime(); t <= to.getTime(); t += STEP_MS) {
+  // Sample at `from`, then on fixed 6-minute clock marks, so a window keeps the same
+  // start and end from one moment to the next instead of creeping with the clock.
+  const first = from.getTime()
+  for (let t = first; t <= to.getTime(); t = t === first ? Math.floor(first / STEP_MS) * STEP_MS + STEP_MS : t + STEP_MS) {
     const h = heightAt(events, new Date(t))
     const ok = h != null && allowed(t) && (dir === 'above' ? h >= feet : h <= feet)
     if (ok && !cur) cur = { start: t, end: t, peak: h }
@@ -41,6 +44,8 @@ export function findWindows(events, from, to, dir, feet, allowed = () => true) {
 const DAY = 86400e3
 const SET_H = 120
 const round1 = (v) => Math.round(v * 10) / 10
+// One step up or down in the chosen units: a tenth of a foot, or 5 cm (heights are kept in feet).
+const nudge = (feet, dir) => (isMetric() ? (Math.round(feet * 0.3048 * 20) + dir) / 20 / 0.3048 : round1(feet + dir * 0.1))
 
 /** The tide curve for the next two days with a draggable level line. */
 function LevelSetter({ events, now, feet, dir, lo, hi, onChange }) {
@@ -92,7 +97,7 @@ function LevelSetter({ events, now, feet, dir, lo, hi, onChange }) {
           <g
             role="slider"
             tabIndex="0"
-            aria-label="Height of tide to plan for, in feet"
+            aria-label={`Height of tide to plan for, in ${isMetric() ? 'metres' : 'feet'}`}
             aria-valuemin={lo}
             aria-valuemax={hi}
             aria-valuenow={feet}
@@ -133,7 +138,8 @@ export default function Planner({ events, now, station, live }) {
   const allowed = opts.daylight && hasSun ? (t) => !isNight(new Date(t), station.lat, station.lng, off(t)) : undefined
   const windows = findWindows(events, now, end, opts.dir, feet, allowed)
   const totalMs = windows.reduce((n, w) => n + (w.end - w.start), 0)
-  const shown = windows.find((w) => w.start === picked) ?? windows[0] ?? null
+  // `picked` is a moment inside the chosen window, so the choice survives the clock moving on.
+  const shown = (picked != null && windows.find((w) => w.start <= picked && picked <= w.end)) || windows[0] || null
   const time = (t) => formatAtStation(new Date(t), off(t))
   const dayName = (t) => formatDay(stationDate(new Date(t), off(t))).split(',')[0]
   // e.g. "Thu 17:08 – 23:32", or "Thu 22:10 – Fri 03:40" when it runs past midnight
@@ -157,9 +163,9 @@ export default function Planner({ events, now, station, live }) {
           ))}
         </div>
         <div className="stepper">
-          <button type="button" aria-label="Lower by a tenth of a foot" onClick={() => update({ feet: round1(feet - 0.1) })}>−</button>
+          <button type="button" aria-label={isMetric() ? 'Lower by 5 centimetres' : 'Lower by a tenth of a foot'} onClick={() => update({ feet: nudge(feet, -1) })}>−</button>
           <output aria-live="polite">{ft(feet)}</output>
-          <button type="button" aria-label="Raise by a tenth of a foot" onClick={() => update({ feet: round1(feet + 0.1) })}>+</button>
+          <button type="button" aria-label={isMetric() ? 'Raise by 5 centimetres' : 'Raise by a tenth of a foot'} onClick={() => update({ feet: nudge(feet, 1) })}>+</button>
         </div>
         {hasSun && (
           <button type="button" className={opts.daylight ? 'toggle on' : 'toggle'} aria-pressed={opts.daylight} aria-label="Daylight only" onClick={() => update({ daylight: !opts.daylight })}><Icon name="sun" /></button>
@@ -185,13 +191,13 @@ export default function Planner({ events, now, station, live }) {
                 {sun?.polar === 'night' && <div className="tl-night" style={{ left: 0, right: 0 }} />}
                 {segs.map((w) => (
                   <button
-                    key={w.start}
+                    key={w.end}
                     type="button"
                     className={shown === w ? 'tl-win on' : 'tl-win'}
                     style={{ left: `${pct(w.start)}%`, width: `${Math.max(1.5, pct(w.end) - pct(w.start))}%` }}
                     aria-label={`${span(w)}, ${formatDuration(w.end - w.start)}, ${opts.dir === 'above' ? 'maximum' : 'minimum'} ${ft(w.peak)}`}
                     aria-pressed={shown === w}
-                    onClick={() => setPicked(w.start)}
+                    onClick={() => setPicked((w.start + w.end) / 2)}
                   />
                 ))}
                 {day === today && <div className="tl-now" style={{ left: `${pct(now.getTime())}%` }} />}

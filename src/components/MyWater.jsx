@@ -57,12 +57,30 @@ export function RuleLights({ my, events, now, heightNow, onOpen }) {
 
 const num = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v))
 
-function Field({ label, value, onChange, step = 0.1, unit = hUnit(), min }) {
+/**
+ * A number field that lets you type freely: what you type is kept as text, saved as soon
+ * as it is a figure within range, and tidied (clamped, or put back if empty) when you leave.
+ */
+function Field({ label, value, onChange, step = 0.1, unit = hUnit(), min, max, allowEmpty = false }) {
+  const [text, setText] = useState(String(value))
+  const inRange = (n) => (min == null || n >= min) && (max == null || n <= max)
+  const typed = (raw) => {
+    setText(raw)
+    const n = num(raw)
+    if ((n != null && inRange(n)) || (raw === '' && allowEmpty)) onChange(raw)
+  }
+  const leave = () => {
+    const n = num(text)
+    if (n == null) return setText(allowEmpty ? '' : String(value))
+    const fixed = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, Number(step) >= 1 ? Math.round(n) : n))
+    setText(String(fixed))
+    onChange(String(fixed))
+  }
   return (
     <label className="field">
       <span>{label}</span>
       <span className="field-in">
-        <input type="number" inputMode="decimal" step={step} min={min} value={value} onChange={(e) => onChange(e.target.value)} />
+        <input type="number" inputMode="decimal" step={step} min={min} max={max} value={text} onChange={(e) => typed(e.target.value)} onBlur={leave} />
         <em>{unit}</em>
       </span>
     </label>
@@ -88,8 +106,8 @@ export function Berth({ my, events, now, heightNow, observed }) {
         <Explain id="berth" />
       </div>
       <div className="fields">
-        <Field label="Charted depth" value={charted} onChange={(v) => update(v, draft)} />
-        <Field label="Boat's draft" value={draft} min="0" onChange={(v) => update(charted, v)} />
+        <Field allowEmpty label="Charted depth" value={charted} onChange={(v) => update(v, draft)} />
+        <Field allowEmpty label="Boat's draft" value={draft} min={0} onChange={(v) => update(charted, v)} />
       </div>
       {!b && <p className="hint">Enter the depth printed on the chart at your dock, mooring or ramp, and your draft, to see the water you have there.</p>}
       {b && (
@@ -147,7 +165,7 @@ export function Rules({ my, events, now, heightNow }) {
                 <small>{statusText(st, time)}</small>
               </span>
               {r.id === 'turn'
-                ? <Field key={`${r.id}`} label="Within" value={rule.minutes} step="5" min="5" unit="min" onChange={(v) => set('turn', 'minutes', v, (m) => Math.min(180, Math.max(5, Math.round(m))))} />
+                ? <Field key={`${r.id}`} label="Within" value={rule.minutes} step="5" min={5} max={180} unit="min" onChange={(v) => set('turn', 'minutes', v, (m) => Math.min(180, Math.max(5, Math.round(m))))} />
                 : <Field key={`${r.id}-${hUnit()}`} label={r.id === 'launch' ? 'At least' : 'At most'} value={fromFeet(r.id === 'launch' ? rule.min : rule.max)} onChange={(v) => set(r.id, r.id === 'launch' ? 'min' : 'max', v, toFeet)} />}
             </li>
           )

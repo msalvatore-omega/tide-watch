@@ -7,7 +7,7 @@
 import { fetchHiLo, fetchLive } from '../../src/noaa.js'
 import { findAlerts } from '../../src/alerts.js'
 import { liveNow, diffText } from '../../src/surge.js'
-import { formatStationTime } from '../../src/tides.js'
+import { formatStationTime, setClock24 } from '../../src/tides.js'
 import { sendPush, generateVapidKeys, b64u } from './webpush.js'
 import { generate, buildContext, AiError } from './ai.js'
 
@@ -48,6 +48,18 @@ export function cleanSettings(s = {}) {
     mode: s.mode === 'custom' ? 'custom' : 'auto',
     feet: num(s.feet, 0.1, 50) ?? 6,
     surgeFeet: s.surgeFeet === null ? null : num(s.surgeFeet, 0.1, 20) ?? 1,
+  }
+}
+
+setClock24(true) // mariners' usage, the same as the app: 19:06, not 7:06 PM
+
+/** Whether the browser's public key is a real point on the P-256 curve (so it can be encrypted to). */
+export async function usableKey(sub) {
+  try {
+    await crypto.subtle.importKey('raw', b64u.decode(sub.keys.p256dh), { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+    return true
+  } catch {
+    return false
   }
 }
 
@@ -137,7 +149,7 @@ export class Engine {
   }
 
   async subscribe({ subscription, stationId, stationName, settings }, now = Date.now()) {
-    if (!validSubscription(subscription)) throw new Error('Invalid push subscription.')
+    if (!validSubscription(subscription) || !(await usableKey(subscription))) throw new Error('Invalid push subscription.')
     if (!/^[A-Za-z0-9]{1,16}$/.test(stationId ?? '')) throw new Error('Invalid station.')
     const id = await sha256Hex(subscription.endpoint)
     const exists = rows(this.sql.exec('SELECT station_id FROM subs WHERE id = ?', id))[0]
@@ -227,8 +239,15 @@ export class Engine {
           }
         }
         for (const row of stationSubs) {
-          summary.sent += await this.checkSwings(row, events, nowDate)
-          summary.sent += await this.checkSurge(row, reading)
+          // One subscription that cannot be sent to (bad key, push service down) must
+          // not stop the alerts for everyone else at this station.
+          try {
+            summary.sent += await this.checkSwings(row, events, nowDate)
+            summary.sent += await this.checkSurge(row, reading)
+          } catch (e) {
+            summary.errors++
+            this.log(`station ${stationId} subscription ${String(row.id).slice(0, 8)}: ${e.message}`)
+          }
         }
       } catch (e) {
         summary.errors++

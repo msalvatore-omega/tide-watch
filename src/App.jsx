@@ -1,8 +1,8 @@
 import Icon from './components/Icon.jsx'
 import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
-import { tideNow, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, hDiff, tempText, setClock24, isClock24, setMetric, isMetric, ft } from './tides.js'
-import { useSixMinute, useConditions, useNearestLiveGauge, useOnline, liveNow, isSurge, diffText } from './live.js'
+import { tideNow, offsetAt, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, hDiff, tempText, setClock24, isClock24, setMetric, isMetric, ft } from './tides.js'
+import { useSixMinute, useConditions, useNearestLiveGauge, useGaugeListed, useOnline, liveNow, isSurge, diffText } from './live.js'
 import { sunTimes, moonPhase, moonTimes, nextMoonEvent } from './astro.js'
 import { useFavorites } from './favorites.js'
 import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
@@ -159,6 +159,8 @@ function Tidely() {
   const reading = hasGauge ? liveNow(sixData, now) : null
   const live = reading && reading.ageMs < MAX_READING_AGE_MS ? reading : null
   const nearestGauge = useNearestLiveGauge(station, noGauge)
+  // A station NOAA lists as having a gauge, but which returned nothing: it is down, not absent.
+  const gaugeDown = useGaugeListed(station, noGauge) === true
   const weatherGauge = hasGauge
     ? { id: stationId, name: null }
     : nearestGauge ? { id: nearestGauge.id, name: `${nearestGauge.name} (${nmText(nearestGauge.miles)})` } : null
@@ -236,6 +238,11 @@ function Tidely() {
       detail: `Large tidal range${bigRange.inProgress ? ' under way' : ''}: ${bigRange.rising ? 'rise' : 'fall'} of ${ft(bigRange.size)} to ${hwlw(bigRange.to)} ${formatStationTime(bigRange.to.local)}, ${bigRange.ratio.toFixed(1)}× the usual range.`,
     })
   }
+  // Near the end of the saved predictions there may be no tide "now", or only one more
+  // high or low water left; everything below must cope with that.
+  const wxOffset = tide?.offsetMs ?? (events?.length ? offsetAt(events, now) : 0)
+  const nexts = [tide?.nextHigh, tide?.nextLow].filter(Boolean).sort((x, y) => x.time - y.time)
+  const nextName = (e) => (e.type === 'H' ? 'High water' : 'Low water')
   for (const a of marineAlerts) {
     const text = a.description.replace(/\n(?!\n)/g, ' ').replace(/\s{2,}/g, ' ').trim()
     badges.push({
@@ -243,7 +250,7 @@ function Tidely() {
       kind: a.rank >= 3 ? 'wx severe' : 'wx',
       icon: 'flag',
       label: a.event,
-      detail: `${a.event} ${a.onset && a.onset > now ? `from ${formatAtStation(a.onset, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : `until ${formatAtStation(a.ends, tide.offsetMs, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`} (National Weather Service). ${text.length > 420 ? `${text.slice(0, 420)}…` : text}`,
+      detail: `${a.event} ${a.onset && a.onset > now ? `from ${formatAtStation(a.onset, wxOffset, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : `until ${formatAtStation(a.ends, wxOffset, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`} (National Weather Service). ${text.length > 420 ? `${text.slice(0, 420)}…` : text}`,
     })
   }
   const moon = moonPhase(now)
@@ -262,6 +269,7 @@ function Tidely() {
   const shownBadge = badges.find((b) => b.id === (badgeOpen === undefined ? 'flood' : badgeOpen)) ?? null
 
   const gaugeNote = live ? null
+    : gaugeDown ? 'Tide gauge not reporting: showing predictions'
     : noGauge ? (nearestGauge
       ? <>No tide gauge at this station · <button type="button" className="link inline" onClick={() => setStationId(nearestGauge.id)}>{nearestGauge.name} has one ({nmText(nearestGauge.miles)})</button></>
       : 'No tide gauge at this station')
@@ -297,12 +305,12 @@ function Tidely() {
             {station && tide && view && (
               <Share
                 url={location.href}
-                text={`${stationLabel}: height of tide ${ft(view.height)}, ${live?.trend === 'steady' ? 'at stand' : view.rising ? 'flooding' : 'ebbing'}. High water ${formatStationTime(tide.nextHigh.local)} (${ft(tide.nextHigh.height)}), low water ${formatStationTime(tide.nextLow.local)} (${ft(tide.nextLow.height)}).`}
+                text={`${stationLabel}: height of tide ${ft(view.height)}, ${live?.trend === 'steady' ? 'at stand' : view.rising ? 'flooding' : 'ebbing'}. ${nexts.map((e) => `${nextName(e)} ${formatStationTime(e.local)} (${ft(e.height)})`).join(', ')}.`}
                 card={{
                   title: stationLabel,
                   big: ft(view.height),
                   state: live?.trend === 'steady' ? '◆ Stand' : view.rising ? '▲ Flood tide' : '▼ Ebb tide',
-                  lines: [`▲ High water ${formatStationTime(tide.nextHigh.local)} · ${ft(tide.nextHigh.height)}`, `▼ Low water ${formatStationTime(tide.nextLow.local)} · ${ft(tide.nextLow.height)}`],
+                  lines: nexts.map((e) => `${e.type === 'H' ? '▲' : '▼'} ${nextName(e)} ${formatStationTime(e.local)} · ${ft(e.height)}`),
                   footer: `${live ? 'Observed' : 'Predicted'} ${formatAtStation(now, tide.offsetMs)} · Tidely · NOAA data`,
                 }}
               />
@@ -386,7 +394,7 @@ function Tidely() {
             </div>
             <TideChart key={station.id} gauge events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
             <div className="hero-next">
-              {[tide.nextHigh, tide.nextLow].sort((x, y) => x.time - y.time).map((e) => (
+              {nexts.map((e) => (
                 <div key={e.type} className={e.type === 'H' ? 'next high' : 'next low'}>
                   <span className="next-name">{e.type === 'H' ? '▲ High water' : '▼ Low water'}</span>
                   <span className="next-time">{formatStationTime(e.local, { withDay: false })}</span>
@@ -454,7 +462,7 @@ function Tidely() {
                   now={now}
                   {...swing}
                   reading={live}
-                  liveStatus={live ? 'ok' : noGauge ? 'unavailable' : reading ? 'error' : six.status}
+                  liveStatus={live ? 'ok' : gaugeDown ? 'error' : noGauge ? 'unavailable' : reading ? 'error' : six.status}
                 />
               </Fold>
             )}
