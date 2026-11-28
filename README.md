@@ -41,10 +41,6 @@ with the usable windows filled in. Above/below, daylight-only, tap a window for 
 Also **My berth** (charted depth + draft → depth now, under-keel clearance, when the
 boat is predicted to touch bottom) and the rules behind the lights.
 
-**🌀 Currents**: a compass dial showing set and drift now, and a flood/ebb curve for
-24 hours with slack water and the maxima marked; table on demand. Flags **wind against
-tide** when the gauge's wind opposes the current.
-
 **Help**: a first-visit tour, a ? on every panel (how to read it, and its terms), tappable
 terms, and a glossary under ⓘ.
 
@@ -81,7 +77,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 81 unit tests: tide math, alerts, surge, sun/moon, planner, history, currents, briefing, changelog
+npm test        # 78 unit tests: tide math, alerts, surge, sun/moon, planner, history, map readings, briefing, changelog
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.
@@ -143,7 +139,6 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/astro.js` | Sunrise/sunset, moon phase, moonrise/moonset |
 | `src/history.js` | Flood levels, "last time this high/low", records |
 | `src/favorites.js` | Favorite stations |
-| `src/currents.js` | Tidal-current state from slack/max events |
 | `src/briefing.js` | "At a glance" summary and preset answers (rules, no AI) |
 | `src/ai.js` | Client for the optional AI question box |
 | `src/insight.js` | Height in context, gauge-vs-prediction agreement, berth depth, by-your-rules lights |
@@ -151,7 +146,7 @@ On iPhone/iPad, web push only works after adding the site to the Home Screen (iO
 | `src/glossary.js` | Term definitions and the "how to read this" text for each panel |
 | `src/changelog.js` | Version history shown to users (update with every change) |
 | `src/alerts.js` | Big-swing detection and calendar (.ics) export |
-| `src/components/` | Tide chart with level gauge, sun/moon bar, week strips, planner timeline, currents dial, history scale, station picker, alerts |
+| `src/components/` | Tide chart with level gauge, sun/moon bar, week strips, planner timeline, station map, history scale, station picker, alerts |
 | `src/push.js` | Registers the device with the alerts server |
 | `public/sw.js` | Service worker: offline cache, and notifications |
 | `test/` | App unit tests (vitest) |

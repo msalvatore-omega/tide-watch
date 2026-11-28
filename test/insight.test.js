@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { usualRange, heightContext, agreement, berthNow, defaultRules, ruleStatus } from '../src/insight.js'
-import { windAgainstCurrent } from '../src/currents.js'
 import { currentAlerts } from '../src/nws.js'
 import { ft, tempText, setMetric, toFeet, fromFeet, heightAt } from '../src/tides.js'
 import { baltimoreEvents, NOW } from './helpers.js'
@@ -117,21 +116,6 @@ describe('by your rules', () => {
     const before = ruleStatus('turn', { minutes: 60 }, events, at(-90), 0)
     expect(before.on).toBe(false)
     expect(before.next).toEqual(at(-60))
-  })
-})
-
-describe('wind against tide', () => {
-  it('flags wind blowing against the current', () => {
-    expect(windAgainstCurrent(310, 15, 310, 1)).toEqual({ angle: 0, strong: false }) // NW wind, current setting NW
-    expect(windAgainstCurrent(350, 20, 320, 1.5).strong).toBe(true)
-    expect(windAgainstCurrent(10, 15, 350, 1).angle).toBe(20) // across north
-  })
-  it('stays quiet with wind and current together, across, or too little of either', () => {
-    expect(windAgainstCurrent(130, 15, 310, 1)).toBeNull() // wind with the current
-    expect(windAgainstCurrent(40, 15, 310, 1)).toBeNull() // abeam
-    expect(windAgainstCurrent(310, 6, 310, 1)).toBeNull()
-    expect(windAgainstCurrent(310, 15, 310, 0.2)).toBeNull()
-    expect(windAgainstCurrent(null, 15, 310, 1)).toBeNull()
   })
 })
 

@@ -57,7 +57,7 @@ export default function Glance({ station, online, ...data }) {
               value={question}
               maxLength={300}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ask about tides, currents or weather here…"
+              placeholder="Ask about tides or weather here…"
               aria-label="Ask a question about tides at this station (answered by AI)"
             />
             <button type="submit" className="secondary" disabled={answer.status === 'loading' || question.trim().length < 3}>Ask</button>

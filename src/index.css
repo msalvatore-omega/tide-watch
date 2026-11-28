@@ -512,27 +512,9 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 .chart .dot-now-forecast { stroke: var(--brand); fill: var(--panel); }
 @media (prefers-color-scheme: dark) { .flood-line { stroke: #ff8a50; } .chart .flood-label { fill: #ff8a50; } }
 
-/* --- Currents tab --- */
-.tabs { grid-template-columns: repeat(5, 1fr); }
+/* --- Tabs --- */
+.tabs { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 420px) { .tabs button { font-size: 0.82rem; padding: 0 2px; } }
-.cur-pick { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); margin: 4px 0 8px; }
-.cur-pick select { min-height: 44px; font-size: 16px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); max-width: 100%; }
-.cur-now { padding: 10px 12px; border-radius: 12px; background: var(--bg); border-left: 4px solid var(--brand); margin: 8px 0; }
-.cur-now.ebb { border-left-color: var(--low); }
-.cur-now.slack { border-left-color: var(--muted); }
-.cur-state { font-weight: 700; font-size: 1.05rem; }
-.cur-speed { color: var(--muted); margin-top: 2px; }
-.cur-speed strong { color: var(--ink); }
-.cur-cards { margin: 8px 0; }
-.cur-cards .card { box-shadow: none; background: var(--bg); }
-.cur-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-variant-numeric: tabular-nums; }
-.cur-table td { padding: 3px 4px; }
-.cur-table td.num { text-align: right; }
-.cur-table td.dir { width: 3.5em; color: var(--muted); }
-.cur-table tr.slack td { color: var(--muted); }
-.cur-table tr.flood .kind-cell { color: var(--high); font-weight: 600; }
-.cur-table tr.ebb .kind-cell { color: var(--low-text); font-weight: 600; }
-@media (max-width: 560px) { .cur-cards { grid-template-columns: 1fr 1fr 1fr; } .cur-cards .card .big { font-size: 0.95rem; } .cur-cards .card { padding: 8px; } }
 
 /* --- At a glance (+ optional AI question box) --- */
 .glance { margin: 0 0 10px; padding-bottom: 10px; }
@@ -738,40 +720,6 @@ footer { margin-top: 10px; }
 .plan-detail { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 10px 0 2px; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-variant-numeric: tabular-nums; }
 .plan-detail span { color: var(--muted); font-size: 0.9rem; }
 
-/* --- Currents: dial + curve --- */
-.cur-select { max-width: 62%; min-height: 34px; font-size: 0.82rem; padding: 0 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); }
-.cur-top { display: flex; align-items: center; gap: 12px; margin: 6px 0 8px; }
-.cur-dial { width: 150px; height: 150px; flex: none; overflow: visible; }
-.cur-card { font-size: 11px; font-weight: 700; fill: var(--muted); }
-.cur-arrow line { stroke-width: 9; stroke-linecap: round; }
-.cur-arrow.flood line, .cur-arrow.flood polygon { stroke: var(--high); fill: var(--high); }
-.cur-arrow.ebb line, .cur-arrow.ebb polygon { stroke: var(--low); fill: var(--low); }
-.cur-hub { fill: var(--ink); }
-.cur-hub.slack { fill: var(--muted); }
-.cur-read { min-width: 0; }
-.cur-read .cur-state { font-size: 1.1rem; font-weight: 800; }
-.cur-read.flood .cur-state { color: var(--high); }
-.cur-read.ebb .cur-state { color: var(--low-text); }
-.cur-read.slack .cur-state { color: var(--muted); }
-.cur-knots { font-size: 2.1rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.cur-knots span { font-size: 1rem; font-weight: 600; color: var(--muted); }
-.cur-set, .cur-trend, .cur-next { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.cur-next { margin-top: 4px; color: var(--ink); font-weight: 600; }
-.cur-curve { margin: 4px 0; }
-.cur-curve svg { display: block; }
-.cur-fill.flood { fill: var(--high); opacity: 0.22; }
-.cur-fill.ebb { fill: var(--low); opacity: 0.25; }
-.cur-axis { stroke: var(--muted); stroke-width: 1; opacity: 0.6; }
-.cur-line { fill: none; stroke: var(--ink); stroke-width: 1.8; opacity: 0.75; }
-.cur-side { font-size: 10px; font-weight: 700; }
-.cur-side.flood { fill: var(--high); }
-.cur-side.ebb { fill: var(--low-text); }
-.cur-slack { fill: var(--panel); stroke: var(--ink); stroke-width: 1.8; }
-.cur-slack-bg { width: 8px; height: 8px; border-radius: 0; transform: rotate(45deg); border: 1.8px solid var(--ink); background: var(--panel); }
-.cur-details { border-top: 1px solid var(--border); margin-top: 6px; }
-.cur-details > summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; color: var(--muted); font-weight: 600; font-size: 0.9rem; }
-.cur-curve .dot-high { fill: var(--high); }
-.cur-curve .dot-low { fill: var(--low); }
 
 .glance-btn.on .glance-short { color: var(--ink); }
 
@@ -963,9 +911,6 @@ footer .about { flex: 1; min-width: 0; }
 .agree-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #1f9d57; transform: translateY(-1px); }
 .agree.fair .agree-dot { background: #d98b1c; } .agree.wide .agree-dot { background: #e5484d; }
 
-/* --- Wind against tide --- */
-.wind-tide { margin: 10px 0; padding: 8px 10px; border-radius: 10px; border-left: 5px solid #d98b1c; background: color-mix(in srgb, #d98b1c 12%, var(--panel)); font-size: 0.9rem; line-height: 1.45; }
-.wind-tide.strong { border-left-color: #c2272d; background: color-mix(in srgb, #e5484d 12%, var(--panel)); }
 
 /* --- Station map --- */
 .map-wrap { margin-top: 10px; }
@@ -1141,6 +1086,5 @@ h1 .icon { color: var(--brand); }
 .map-level.left { left: auto; right: 11px; }
 .map-pop-extra { display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; color: #33475b; }
 .map-pop-extra:empty { display: none; }
-@media (max-width: 420px) { .tabs button { font-size: 0.78rem; } }
 .map-level.above { left: 0; top: -35px; transform: translateX(-50%); }
 .map-level.below { left: 0; top: 12px; transform: translateX(-50%); }

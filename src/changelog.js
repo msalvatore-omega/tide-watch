@@ -11,6 +11,14 @@
 
 export const CHANGELOG = [
   {
+    version: '2.9.0',
+    date: '2026-11-28',
+    title: 'Currents page removed',
+    changes: [
+      { kind: 'improved', text: 'The Currents page has been taken out to keep the app simpler. The four pages are now Now, Week, Plan and Map.' },
+    ],
+  },
+  {
     version: '2.8.0',
     date: '2026-11-28',
     title: 'A Map page of its own',

@@ -18,8 +18,6 @@ export const TERMS = {
   surge: 'Water pushed above the prediction by wind and low pressure (or below it, when an offshore wind blows the water out).',
   'flood stage': 'The height at which water starts to come over the land at this place. NOAA publishes minor, moderate and major stages.',
   'slack water': 'The moment the current stops before it turns. It often does not happen at the same time as high or low water.',
-  set: 'The direction a current flows toward, in degrees true. A set of 310° is flowing to the north-west.',
-  drift: 'The speed of a current, in knots.',
   knot: 'One nautical mile per hour, about 1.15 mph.',
   'nautical mile': 'One minute of latitude: 1,852 metres, about 1.15 statute miles.',
   'Beaufort force': 'A 0 to 12 scale of wind strength. Force 4 (11 to 16 knots) is a moderate breeze; force 6 a strong breeze; force 8 a gale.',
@@ -104,14 +102,6 @@ export const EXPLAIN = {
       'Tap a green bar for its start, end and length. Add a margin for your draft and for wind, which can shift the times.',
     ],
     terms: ['height of tide', 'draft', 'under-keel clearance', 'predicted'],
-  },
-  currents: {
-    title: 'Currents',
-    how: [
-      'The compass arrow points where the current is flowing to; a longer arrow is a stronger current. The big number is its speed.',
-      'The curve below shows the next 24 hours: flood above the line, ebb below, with diamonds at slack water.',
-    ],
-    terms: ['flood', 'ebb', 'slack water', 'set', 'drift', 'knot'],
   },
   berth: {
     title: 'My berth',

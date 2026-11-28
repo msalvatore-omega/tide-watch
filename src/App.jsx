@@ -14,7 +14,6 @@ import Instruments, { freshWeather, MoonDisc } from './components/Instruments.js
 import WhatsNew from './components/WhatsNew.jsx'
 import WeekTable from './components/WeekTable.jsx'
 import Planner from './components/Planner.jsx'
-import Currents from './components/Currents.jsx'
 import Glance from './components/Glance.jsx'
 import AlertsPanel, { useSwingAlerts } from './components/AlertsPanel.jsx'
 import { Explain, Glossary } from './components/Explain.jsx'
@@ -31,7 +30,6 @@ const TABS = [
   { id: 'now', label: 'Now' },
   { id: 'week', label: 'Week' },
   { id: 'plan', label: 'Plan' },
-  { id: 'currents', label: 'Currents' },
   { id: 'map', label: 'Map' },
 ]
 
@@ -487,7 +485,6 @@ function Tidely() {
         </>
       )}
       {tab === 'map' && <MapTab station={station} onPick={(id) => { setStationId(id); setTab('now') }} isFavorite={favs.isFavorite} onToggleFavorite={favs.toggle} />}
-      {tide && tab === 'currents' && <Currents key={stationId} events={events} now={now} station={station} wind={wx?.wind ?? null} />}
       </div>
 
       <footer>
