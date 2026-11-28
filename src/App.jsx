@@ -247,6 +247,7 @@ function Tidely() {
     })
   }
   const moon = moonPhase(now)
+  const south = station?.lat != null && station.lat < 0 // the moon looks upside down from there
   const moonToday = hasCoords ? moonTimes(now, station.lat, station.lng, tide.offsetMs) : null
   const moonNext = hasCoords ? nextMoonEvent(now, station.lat, station.lng, tide.offsetMs) : null
   // Which comes next, full or new moon, and in how many days.
@@ -374,8 +375,8 @@ function Tidely() {
                     : '○ predicted'}
                 </span>
               </div>
-              <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit, ${moonAhead.replace(' d', ' days').replace('1 days', '1 day').replace('full', 'full moon').replace('new', 'new moon')}${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}${moonNextText ? `. Next ${moonNextText}` : ''}.`}>
-                <MoonDisc moon={moon} size={64} />
+              <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit, ${moonAhead.replace(/ d$/, ' days').replace('full', 'full moon').replace('new', 'new moon')}${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}${moonNextText ? `. Next ${moonNextText}` : ''}.`}>
+                <MoonDisc moon={moon} size={64} south={south} />
                 <strong aria-hidden="true" className="hero-moon-name">{moon.name}</strong>
                 <small aria-hidden="true">{moonAhead}</small>
                 {moon.tides && <small aria-hidden="true">{moon.tides === 'spring' ? 'spring tides' : 'neap tides'}</small>}
@@ -418,6 +419,7 @@ function Tidely() {
             )}
             <Fold icon="sun" title="Sun and moon" hint={moonPhase(now).name}>
               <Instruments
+                south={south}
                 now={now}
                 sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
                 moon={moonPhase(now)}

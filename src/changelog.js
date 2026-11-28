@@ -11,6 +11,17 @@
 
 export const CHANGELOG = [
   {
+    version: '2.6.1',
+    date: '2026-11-28',
+    title: 'Moon picture fixes',
+    changes: [
+      { kind: 'fixed', text: 'A thin crescent moon was drawn too faint to see (it is now always drawn wide enough to notice), and every phase had a grey ring inside its bright edge. The bright edge is now crisp and only the shadow edge is soft.' },
+      { kind: 'fixed', text: 'On narrow phones the larger moon could squeeze the flood or ebb wording beside it. The moon is a little smaller there and the wording sits on its own line beneath.' },
+      { kind: 'fixed', text: 'For stations south of the equator the moon is now drawn the way it looks from there, the other way up and lit on the other side.' },
+      { kind: 'fixed', text: 'The small moons in the week view and the sun and moon row are back to their simple, clear look, which also makes those pages lighter on older phones.' },
+    ],
+  },
+  {
     version: '2.6.0',
     date: '2026-11-27',
     title: 'A better picture of the moon',

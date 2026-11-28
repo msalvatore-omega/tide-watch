@@ -1103,3 +1103,25 @@ h1 .icon { color: var(--brand); }
 .hero-moon { max-width: 5.6rem; text-align: center; }
 .hero-moon-name { font-size: 0.74rem; line-height: 1.15; color: var(--ink); margin-top: 2px; }
 .hero-moon small { line-height: 1.25; white-space: nowrap; }
+
+/* ---------- The detailed moon ---------- */
+.moon-hi { stop-color: #fdfbf2; }
+.moon-mid { stop-color: #ece6d3; }
+.moon-limb { stop-color: #c9c1a8; }
+.moon-shade { fill: #3a4358; }
+.moon-shade-sea { fill: #2c3447; opacity: 0.8; }
+.moon-sea { fill: #8f8b7c; opacity: 0.5; }
+.moon-ray { fill: #fffef8; opacity: 0.35; }
+.moon-crater { fill: #fffef8; opacity: 0.9; }
+.moon-pit { fill: #b9b29b; opacity: 0.7; }
+.moon-rim.moon-rim-fine { stroke-width: 1.6; }
+/* Narrow phones: a smaller moon, and the flood/ebb wording on its own line beneath, so
+   the top row always fits. */
+@media (max-width: 380px) {
+  .hero-moon .moon-disc { width: 48px; height: 48px; }
+  .hero-top { display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "height moon help" "state state state"; align-items: center; gap: 6px 10px; }
+  .hero-height { grid-area: height; }
+  .hero-moon { grid-area: moon; }
+  .hero-top > .explain-btn, .hero-top > :last-child { grid-area: help; }
+  .hero-state { grid-area: state; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+}

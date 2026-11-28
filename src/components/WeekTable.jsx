@@ -111,7 +111,7 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
             <div className="strip-day">
               <strong>{formatDay(r.day).split(',')[0]}</strong>
               <span>{Number(r.day.slice(8))}</span>
-              <MoonDisc moon={r.moon} size={16} />
+              <MoonDisc moon={r.moon} size={16} south={station?.lat < 0} />
             </div>
             <div className="strip-plot" ref={i === 0 ? ref : undefined}>
               {width > 0 && <DayStrip {...r} events={events} width={width} lo={lo} hi={hi} now={now} isToday={r.day === today} bigEnds={bigEnds} flood={flood} />}
@@ -134,7 +134,7 @@ export default function WeekTable({ events, now, offsetMs, station, alerts, floo
               <strong>{formatDay(r.day)}</strong>
               <span className="day-astro">
                 {r.sun?.sunrise && <><Icon name="sun" />↑ {formatAtStation(r.sun.sunrise, r.dayOffset)} · <Icon name="sun" />↓ {formatAtStation(r.sun.sunset, r.dayOffset)} </>}
-                <MoonDisc moon={r.moon} size={14} />
+                <MoonDisc moon={r.moon} size={14} south={station?.lat < 0} />
               </span>
             </div>
             <table>
