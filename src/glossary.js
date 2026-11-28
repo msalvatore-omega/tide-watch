@@ -40,6 +40,15 @@ export const EXPLAIN = {
     ],
     terms: ['height of tide', 'high water', 'low water', 'flood', 'ebb', 'observed', 'predicted', 'flood stage', 'springs', 'neaps', 'chart datum', 'knot', 'barometer'],
   },
+  map: {
+    title: 'The map',
+    how: [
+      'Red dots are tide gauges. Each is labelled with the height of tide it is reading now and an arrow: up for rising, down for falling, a diamond for steady. Readings refresh every 6 minutes.',
+      'Tap any station for its reading, the next high and low water, and the wind and temperatures where the gauge measures them. From there you can make it your station or star it as a favorite.',
+      'Where gauges crowd together some labels are left off so they do not overlap: zoom in, or tap the gauge. The dark ring marks your current station, and the round button shows where you are.',
+    ],
+    terms: ['height of tide', 'observed', 'predicted', 'high water', 'low water', 'chart datum', 'knot'],
+  },
   dial: {
     title: 'The tide dial',
     how: [

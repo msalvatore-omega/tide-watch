@@ -513,7 +513,7 @@ footer { margin-top: 12px; font-size: 0.75rem; }
 @media (prefers-color-scheme: dark) { .flood-line { stroke: #ff8a50; } .chart .flood-label { fill: #ff8a50; } }
 
 /* --- Currents tab --- */
-.tabs { grid-template-columns: repeat(4, 1fr); }
+.tabs { grid-template-columns: repeat(5, 1fr); }
 @media (max-width: 420px) { .tabs button { font-size: 0.82rem; padding: 0 2px; } }
 .cur-pick { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); margin: 4px 0 8px; }
 .cur-pick select { min-height: 44px; font-size: 16px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); max-width: 100%; }
@@ -1135,3 +1135,12 @@ h1 .icon { color: var(--brand); }
 .map-level.steady b { color: #46596c; }
 .map-pop-level { font-weight: 700; }
 .map-level-note { margin: 6px 0 0; }
+
+/* ---------- Map tab ---------- */
+.map.tall { height: min(62vh, 560px); }
+.map-level.left { left: auto; right: 11px; }
+.map-pop-extra { display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; color: #33475b; }
+.map-pop-extra:empty { display: none; }
+@media (max-width: 420px) { .tabs button { font-size: 0.78rem; } }
+.map-level.above { left: 0; top: -35px; transform: translateX(-50%); }
+.map-level.below { left: 0; top: 12px; transform: translateX(-50%); }

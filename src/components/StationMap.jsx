@@ -4,14 +4,14 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { fetchLevelNow } from '../noaa.js'
-import { ft } from '../tides.js'
+import { fetchLevelNow, fetchNextTides, fetchConditions } from '../noaa.js'
+import { ft, formatCountdown, tempText } from '../tides.js'
 
 const MAX_LEVELS = 30 // gauges read at once: the nearest to the middle of the map
 const ARROW = { rising: '▲', falling: '▼', steady: '◆' }
 const TREND = { rising: 'rising', falling: 'falling', steady: 'steady' }
 
-export default function StationMap({ stations, liveIds, liveOnly, center, me, focus, onLocate, locating, onPick, isFavorite, onToggleFavorite }) {
+export default function StationMap({ stations, liveIds, liveOnly, center, me, focus, onLocate, locating, onPick, isFavorite, onToggleFavorite, currentId = null, tall = false }) {
   const meLayer = useRef(null)
   const el = useRef(null)
   const map = useRef(null)
@@ -21,12 +21,13 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
   const [view, setView] = useState(0) // bumps when the map stops moving
   const [levels, setLevels] = useState(() => new Map()) // station id → reading, or null for none
   const [inView, setInView] = useState({ ids: [], more: false })
+  const [crowded, setCrowded] = useState(0) // readings whose label had no room
   const levelsRef = useRef(levels)
   levelsRef.current = levels
   handlers.current = { onPick, isFavorite, onToggleFavorite }
 
   useEffect(() => {
-    const m = L.map(el.current, { preferCanvas: true, zoomControl: true, attributionControl: true }).setView([center?.lat ?? 39.27, center?.lng ?? -76.58], center ? 10 : 6)
+    const m = L.map(el.current, { preferCanvas: true, zoomControl: true, attributionControl: true }).setView([center?.lat ?? 39.27, center?.lng ?? -76.58], center ? (tall ? 8 : 10) : 6)
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 16,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
@@ -39,7 +40,9 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
     return () => { m.remove(); map.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const firstCentre = useRef(true)
   useEffect(() => {
+    if (firstCentre.current) { firstCentre.current = false; return } // the map was created there
     if (center && map.current) map.current.setView([center.lat, center.lng], Math.max(map.current.getZoom(), 10))
   }, [center?.lat, center?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -72,10 +75,15 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
       if (s.lat == null || s.lng == null) continue
       const live = liveIds?.has(s.id)
       if (liveOnly && !live) continue
+      if (s.id === currentId) L.circleMarker([s.lat, s.lng], { radius: 14, color: '#12263a', weight: 3, fill: false, interactive: false }).addTo(group)
       const marker = L.circleMarker([s.lat, s.lng], live
         ? { radius: 8, color: '#fff', weight: 2, fillColor: '#c2272d', fillOpacity: 1 }
         : { radius: 6, color: '#1d6fb3', weight: 2, fillColor: '#fff', fillOpacity: 0.9 })
-      marker.bindPopup(() => {
+      // Built once each time the pop-up opens. (Leaflet asks for the content again whenever
+      // the pop-up is re-measured, which happens as each detail line arrives.)
+      let built = null
+      marker.on('popupclose', () => { built = null })
+      const build = () => {
         const { onPick, isFavorite, onToggleFavorite } = handlers.current
         const box = document.createElement('div')
         box.className = 'map-pop'
@@ -88,12 +96,34 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
         const level = document.createElement('span')
         level.className = 'map-pop-level'
         if (reading) level.textContent = `${ft(reading.height)}${reading.trend ? ` ${ARROW[reading.trend]} ${TREND[reading.trend]}` : ''} · observed ${Math.max(0, Math.round((Date.now() - reading.time) / 60e3))} min ago`
+        // Next high and low water, and for a gauge the weather it is reading: filled in as they arrive.
+        const extra = document.createElement('div')
+        extra.className = 'map-pop-extra'
+        const line = (text) => { const p = document.createElement('span'); p.textContent = text; extra.append(p); if (built && marker.isPopupOpen()) marker.getPopup().update() }
+        fetchNextTides(s.id).then((tides) => {
+          const now = Date.now()
+          const next = (type) => tides.find((e) => e.type === type && e.time > now)
+          for (const e of [next('H'), next('L')].filter(Boolean).sort((a, b) => a.time - b.time)) {
+            line(`${e.type === 'H' ? '▲ High water' : '▼ Low water'} ${formatCountdown(e.time - now)} · ${ft(e.height)}`)
+          }
+        }).catch(() => {})
+        if (live) {
+          fetchConditions(s.id).then((wx) => {
+            const fresh = (x) => (x && (!x.time || Date.now() - x.time < 3 * 3600e3) ? x : null)
+            const parts = [
+              fresh(wx.wind) && `Wind ${wx.wind.dir ?? ''} ${Math.round(wx.wind.knots)} kt`.replace('  ', ' '),
+              fresh(wx.airTemp) && `air ${tempText(wx.airTemp.f)}`,
+              fresh(wx.waterTemp) && `sea ${tempText(wx.waterTemp.f)}`,
+            ].filter(Boolean)
+            if (parts.length) line(parts.join(' · '))
+          }).catch(() => {})
+        }
         const row = document.createElement('div')
         row.className = 'map-pop-row'
         const go = document.createElement('button')
         go.type = 'button'
         go.className = 'primary'
-        go.textContent = 'Show this station'
+        go.textContent = s.id === currentId ? 'This is your station' : 'Make this my station'
         go.onclick = () => onPick(s.id)
         const star = document.createElement('button')
         star.type = 'button'
@@ -107,12 +137,13 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
         paint()
         star.onclick = () => { onToggleFavorite(s); setTimeout(() => { const f = star.textContent === '★'; star.textContent = f ? '☆' : '★'; star.className = f ? 'result-star' : 'result-star on'; star.setAttribute('aria-pressed', String(!f)) }, 0) }
         row.append(go, star)
-        box.append(name, kind, ...(reading ? [level] : []), row)
+        box.append(name, kind, ...(reading ? [level] : []), extra, row)
         return box
-      })
+      }
+      marker.bindPopup(() => (built ??= build()))
       marker.addTo(group)
     }
-  }, [stations, liveIds, liveOnly])
+  }, [stations, liveIds, liveOnly, currentId])
 
   // Which gauges are in view: the nearest MAX_LEVELS to the middle of the map.
   useEffect(() => {
@@ -149,26 +180,47 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
     return () => { cancelled = true; clearInterval(timer) }
   }, [idsKey])
 
-  // Label each gauge in view with its reading.
+  // Label each gauge in view with its reading. Where gauges crowd together a label
+  // goes on the other side of its marker, or is left off, so labels never overlap.
   useEffect(() => {
     const group = levelLayer.current
-    if (!group || !stations) return
+    const m = map.current
+    if (!group || !m || !stations) return
     group.clearLayers()
-    for (const id of inView.ids) {
+    const placed = []
+    const clear = (r) => placed.every((q) => r.x2 < q.x1 || r.x1 > q.x2 || r.y2 < q.y1 || r.y1 > q.y2)
+    // Your own station first, then the nearest to the middle of the map.
+    const order = [...inView.ids].sort((a, b) => Number(b === currentId) - Number(a === currentId))
+    let hidden = 0
+    for (const id of order) {
       const reading = levels.get(id)
       const s = reading && stations.find((x) => x.id === id)
       if (!s) continue
-      const html = `<span class="map-level ${reading.trend ?? ''}">${ft(reading.height)}${reading.trend ? ` <b>${ARROW[reading.trend]}</b>` : ''}</span>`
+      const text = ft(reading.height)
+      const w = text.length * 7.4 + (reading.trend ? 30 : 16) // close enough to the drawn width
+      const p = m.latLngToContainerPoint([s.lat, s.lng])
+      // Try beside the dot (right, then left), then above and below it.
+      const spots = {
+        '': { x1: p.x + 11, x2: p.x + 11 + w, y1: p.y - 12, y2: p.y + 12 },
+        left: { x1: p.x - 11 - w, x2: p.x - 11, y1: p.y - 12, y2: p.y + 12 },
+        above: { x1: p.x - w / 2, x2: p.x + w / 2, y1: p.y - 35, y2: p.y - 11 },
+        below: { x1: p.x - w / 2, x2: p.x + w / 2, y1: p.y + 11, y2: p.y + 35 },
+      }
+      const side = Object.keys(spots).find((k) => clear(spots[k]))
+      if (side == null) { hidden++; continue }
+      placed.push(spots[side])
+      const html = `<span class="map-level ${reading.trend ?? ''} ${side}">${text}${reading.trend ? ` <b>${ARROW[reading.trend]}</b>` : ''}</span>`
       L.marker([s.lat, s.lng], { icon: L.divIcon({ className: 'map-level-icon', html, iconSize: [0, 0] }), interactive: false, keyboard: false }).addTo(group)
     }
-  }, [levels, inView, stations])
+    setCrowded(hidden)
+  }, [levels, inView, stations, currentId])
 
   const shownLevels = inView.ids.map((id) => [stations?.find((s) => s.id === id), levels.get(id)]).filter(([s, r]) => s && r)
 
   return (
     <div className="map-wrap">
       <div className="map-frame">
-        <div ref={el} className="map" role="application" aria-label="Map of tide stations. The search box above lists the same stations as text." />
+        <div ref={el} className={tall ? 'map tall' : 'map'} role="application" aria-label="Map of tide stations. The search box above lists the same stations as text." />
         {onLocate && (
           <button type="button" className="map-locate" onClick={onLocate} disabled={locating} aria-label="Show my location on the map">
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -180,7 +232,7 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
       <p className="hint small-print map-level-note" aria-live="polite">
         {!liveIds ? 'Finding the tide gauges…'
           : !inView.ids.length ? 'No tide gauges in this part of the map.'
-          : shownLevels.length ? `Height of tide observed now at ${shownLevels.length} gauge${shownLevels.length === 1 ? '' : 's'}${inView.more ? ' nearest the middle; zoom in for the rest' : ''}. ▲ rising · ▼ falling · ◆ steady.`
+          : shownLevels.length ? `Height of tide observed now at ${shownLevels.length} gauge${shownLevels.length === 1 ? '' : 's'}${inView.more ? ' nearest the middle; zoom in for the rest' : ''}${crowded ? `. ${crowded} more ${crowded === 1 ? 'has' : 'have'} no room for a label: zoom in, or tap the gauge` : ''}. ▲ rising · ▼ falling · ◆ steady.`
           : 'Reading the gauges…'}
       </p>
       {/* the same readings as text, for screen readers */}

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Fresh module state per test (noaa.js memoises requests).
-let fetchLevelNow
+let fetchLevelNow, fetchNextTides
 const NOW = Date.parse('2026-11-28T15:00:00Z')
 const rows = (pairs) => ({ data: pairs.map(([t, v]) => ({ t, v: String(v) })) })
 const stub = (json) => vi.stubGlobal('fetch', vi.fn(async () => ({ status: 200, json: async () => json })))
@@ -9,7 +9,7 @@ const stub = (json) => vi.stubGlobal('fetch', vi.fn(async () => ({ status: 200, 
 beforeEach(async () => {
   vi.resetModules()
   vi.useFakeTimers({ now: NOW })
-  ;({ fetchLevelNow } = await import('../src/noaa.js'))
+  ;({ fetchLevelNow, fetchNextTides } = await import('../src/noaa.js'))
 })
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
 
@@ -35,5 +35,14 @@ describe('latest gauge reading for the map', () => {
     expect(await fetchLevelNow('4')).toBeNull()
     stub(rows([['2026-11-28 12:00', 1.0], ['2026-11-28 12:30', 1.1], ['2026-11-28 13:00', 1.2]])) // two hours old
     expect(await fetchLevelNow('5')).toBeNull()
+  })
+  it('next high and low waters for the pop-up', async () => {
+    stub({ predictions: [{ t: '2026-11-28 13:10', v: '0.21', type: 'L' }, { t: '2026-11-28 19:06', v: '1.80', type: 'H' }] })
+    const tides = await fetchNextTides('8574680')
+    expect(tides).toEqual([
+      { type: 'L', time: new Date('2026-11-28T13:10:00Z'), height: 0.21 },
+      { type: 'H', time: new Date('2026-11-28T19:06:00Z'), height: 1.8 },
+    ])
+    expect(fetch.mock.calls[0][0]).toMatch(/product=predictions&interval=hilo.*time_zone=gmt.*range=30/)
   })
 })

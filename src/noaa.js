@@ -111,6 +111,19 @@ export const fetchAllStations = () => fetchStationList('tidepredictions')
 export const fetchLiveStations = () => fetchStationList('waterlevels')
 
 /**
+ * The next high and low waters at a station (about a day's worth), for the map's
+ * pop-up: [{ type: 'H' | 'L', time, height }]. Kept for 30 minutes.
+ */
+export const fetchNextTides = (stationId) =>
+  once(`next:${stationId}`, async () => {
+    const json = await getJson(
+      `${DATA_API}?product=predictions&interval=hilo&datum=MLLW&units=english&time_zone=gmt&format=json` +
+      `&station=${encodeURIComponent(stationId)}&begin_date=${sixMinBegin(1)}&range=30&application=${APP_NAME}`,
+    )
+    return (json.predictions ?? []).map((r) => ({ type: r.type, time: toTime(r.t), height: Number(r.v) }))
+  }, 30 * 60e3)
+
+/**
  * The latest gauge reading at a station, for the map: height (feet above MLLW), when it
  * was measured, and whether the water has risen or fallen over the last half hour or so.
  * null when the gauge has reported nothing in the last hour. Kept for 5 minutes.

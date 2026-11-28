@@ -48,8 +48,12 @@ tide** when the gauge's wind opposes the current.
 **Help**: a first-visit tour, a ? on every panel (how to read it, and its terms), tappable
 terms, and a glossary under ⓘ.
 
-Also: search by zip code, name, nearest or on a **map** (OpenStreetMap, loaded on
-demand; it follows the search, can show your own position, and labels each gauge in view with the height of tide it is reading now), with tide-gauge badges; ★ favorites; a **share** button (picture card + link);
+**Map** tab (OpenStreetMap, loaded on demand): each tide gauge in view is labelled with
+the height of tide it is reading now and a rising/falling arrow; tap a station for its
+reading, next high and low water, wind and temperatures, then make it your station or
+star it. Shows your own position on request.
+
+Also: search by zip code, name or nearest, with tide-gauge badges; ★ favorites; a **share** button (picture card + link);
 installable to a phone's home screen; dark mode; no axe WCAG 2 AA violations;
 shareable links (`?station=8574680&tab=week`).
 

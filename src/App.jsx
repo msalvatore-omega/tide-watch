@@ -8,6 +8,7 @@ import { useFavorites } from './favorites.js'
 import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
 import HistoryFacts from './components/HistoryFacts.jsx'
 import TideChart from './components/TideChart.jsx'
+import MapTab from './components/MapTab.jsx'
 import StationPicker from './components/StationPicker.jsx'
 import Instruments, { freshWeather, MoonDisc } from './components/Instruments.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
@@ -31,6 +32,7 @@ const TABS = [
   { id: 'week', label: 'Week' },
   { id: 'plan', label: 'Plan' },
   { id: 'currents', label: 'Currents' },
+  { id: 'map', label: 'Map' },
 ]
 
 const read = (key) => { try { return localStorage.getItem(key) } catch { return null } }
@@ -336,7 +338,7 @@ function Tidely() {
           onToggleFavorite={favs.toggle}
           onPick={(id) => { setStationId(id); setPicking(false) }}
           onCancel={() => setPicking(false)}
-          near={station?.lat != null ? { lat: station.lat, lng: station.lng } : null}
+          onOpenMap={() => { setPicking(false); setTab('map') }}
         />
       )}
 
@@ -484,6 +486,7 @@ function Tidely() {
           </div>
         </>
       )}
+      {tab === 'map' && <MapTab station={station} onPick={(id) => { setStationId(id); setTab('now') }} isFavorite={favs.isFavorite} onToggleFavorite={favs.toggle} />}
       {tide && tab === 'currents' && <Currents key={stationId} events={events} now={now} station={station} wind={wx?.wind ?? null} />}
       </div>
 

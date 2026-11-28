@@ -11,6 +11,17 @@
 
 export const CHANGELOG = [
   {
+    version: '2.8.0',
+    date: '2026-11-28',
+    title: 'A Map page of its own',
+    changes: [
+      { kind: 'new', text: 'There is now a Map page alongside Now, Week, Plan and Currents, showing the height of tide each gauge is reading right now.' },
+      { kind: 'new', text: 'Tap a station on the map for its reading, the next high and low water, and the wind and temperatures where the gauge measures them. From there you can make it your station or star it as a favorite.' },
+      { kind: 'fixed', text: 'Labels on the map no longer overlap when zoomed out. Where gauges crowd together a label moves to the other side of its dot or is left off, and the line under the map says how many.' },
+      { kind: 'improved', text: 'The map is no longer opened inside the station search; the Map button there now takes you to the Map page. Your current station is ringed on the map.' },
+    ],
+  },
+  {
     version: '2.7.0',
     date: '2026-11-28',
     title: 'Height of tide on the map',
