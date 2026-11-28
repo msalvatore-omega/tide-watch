@@ -43,7 +43,7 @@ const PATHS = {
   calm: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM8 14c1 1.500 2.500 2 4 2s3-.500 4-2M9 9.500v.2M15 9.500v.2',
 }
 
-export default function Icon({ name, size = '1.15em', label, className = '' }) {
+export default function Icon({ name, size = '1.15em', label, className = '', ...rest }) {
   return (
     <svg
       className={`icon ${className}`}
@@ -58,6 +58,7 @@ export default function Icon({ name, size = '1.15em', label, className = '' }) {
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : 'true'}
+      {...rest}
     >
       <path d={PATHS[name] ?? PATHS.help} />
     </svg>

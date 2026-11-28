@@ -1060,15 +1060,19 @@ h1 .icon { color: var(--brand); }
 .moon-crater { fill: #fffef8; opacity: 0.9; }
 .moon-pit { fill: #b9b29b; opacity: 0.7; }
 .moon-rim.moon-rim-fine { stroke-width: 1.6; }
-/* Narrow phones: a smaller moon, and the flood/ebb wording on its own line beneath, so
-   the top row always fits. */
-@media (max-width: 380px) {
-  .hero-moon .moon-disc { width: 48px; height: 48px; }
-  .hero-top { display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "height moon help" "state state state"; align-items: center; gap: 6px 10px; }
-  .hero-height { grid-area: height; }
+/* Phones: the height of tide with flood/ebb straight beneath it on the left, the moon
+   on the right, so the top of the picture has no empty corner. */
+@media (max-width: 480px) {
+  .hero-top { display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "height moon help" "state moon help"; align-items: center; gap: 2px 10px; }
+  .hero-height { grid-area: height; align-self: end; font-size: 3rem; }
+  .hero-state { grid-area: state; align-self: start; }
+  .hero-state strong { white-space: nowrap; font-size: 1.1rem; }
   .hero-moon { grid-area: moon; }
   .hero-top > .explain-btn, .hero-top > :last-child { grid-area: help; }
-  .hero-state { grid-area: state; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+  .hero-moon .moon-disc { width: 56px; height: 56px; }
+}
+@media (max-width: 380px) {
+  .hero-moon .moon-disc { width: 48px; height: 48px; }
 }
 
 /* ---------- Height of tide on the map ---------- */
@@ -1093,10 +1097,16 @@ h1 .icon { color: var(--brand); }
 .chip.fav { display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; min-height: 44px; padding: 4px 14px; line-height: 1.2; flex: none; }
 .fav-name { font-weight: 700; }
 .fav-level { font-size: 0.74rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.conditions { grid-template-columns: repeat(var(--cols, 4), auto); align-items: end; row-gap: 10px; }
-.conditions .sun-cell { align-items: center; color: var(--ink); }
-.conditions .sun-cell .icon { color: #b5770f; }
-.conditions .sun-cell b { font-variant-numeric: tabular-nums; }
-@media (prefers-color-scheme: dark) { .conditions .sun-cell .icon { color: #f2c14e; } }
 .map-pop-surge { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #12263a; }
 .map-pop-surge i { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px #cfd8e0; }
+
+/* ---------- Sunrise and sunset on the tide graph ---------- */
+.chart .night-band { fill: #0b1f33; opacity: 0.07; }
+.chart .sun-mark line { stroke: #b5770f; stroke-width: 1; stroke-dasharray: 2 2; opacity: 0.7; }
+.chart .sun-mark .icon { color: #b5770f; overflow: visible; }
+.chart .tick.sun { fill: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (prefers-color-scheme: dark) {
+  .chart .night-band { fill: #000; opacity: 0.28; }
+  .chart .sun-mark line { stroke: #f2c14e; }
+  .chart .sun-mark .icon { color: #f2c14e; }
+}

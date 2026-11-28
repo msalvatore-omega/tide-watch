@@ -11,6 +11,16 @@
 
 export const CHANGELOG = [
   {
+    version: '2.11.0',
+    date: '2026-11-28',
+    title: 'Sunrise and sunset on the tide graph',
+    changes: [
+      { kind: 'new', text: 'Sunrise and sunset are now marked on the tide graph itself: a sun icon with the exact time beneath, at the right place along the foot of the graph, for every day as you slide ahead. Night-time is lightly shaded.' },
+      { kind: 'improved', text: 'On a phone the top of the main picture is tidier: flood or ebb and the gauge reading now sit straight under the big height figure, with the moon alongside, instead of leaving an empty corner.' },
+      { kind: 'improved', text: 'The sunrise and sunset times that sat beside the wind and temperatures have moved to the graph, so that row is back to a single line.' },
+    ],
+  },
+  {
     version: '2.10.0',
     date: '2026-11-28',
     title: 'Surge colours, favorites at a glance, sunrise and sunset',

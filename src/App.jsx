@@ -406,7 +406,7 @@ function Tidely() {
               </div>
               <Explain id="scene" />
             </div>
-            <TideChart key={station.id} gauge events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
+            <TideChart key={station.id} gauge coords={hasCoords ? { lat: station.lat, lng: station.lng } : null} events={events} now={now} predicted={sixData?.predicted} observed={hasGauge ? sixData.observed : null} flood={flood} />
             <div className="hero-next">
               {nexts.map((e) => (
                 <div key={e.type} className={e.type === 'H' ? 'next high' : 'next low'}>
@@ -416,7 +416,7 @@ function Tidely() {
                 </div>
               ))}
             </div>
-            {(wx || sun?.sunrise || sun?.sunset) && <Conditions wx={wx ?? {}} source={wx ? weatherGauge?.name : null} sun={sun} offsetMs={tide.offsetMs} />}
+            {wx && <Conditions wx={wx} source={weatherGauge?.name} />}
             {gaugeNote && <p className="dial-note">{gaugeNote}</p>}
           </section>
 
@@ -538,7 +538,7 @@ function Fold({ icon, title, hint, children }) {
 }
 
 /** Present conditions at the gauge, on one line. */
-function Conditions({ wx, source, sun, offsetMs }) {
+function Conditions({ wx, source }) {
   const p = wx.pressure
   const trend = p?.change3h == null ? '' : p.change3h > 1 ? '↗' : p.change3h < -1 ? '↘' : '→'
   const said = [
@@ -547,14 +547,8 @@ function Conditions({ wx, source, sun, offsetMs }) {
     wx.waterTemp && `sea ${tempText(wx.waterTemp.f)}`,
     p && `barometer ${Math.round(p.mb)} millibars${trend === '↗' ? ', rising' : trend === '↘' ? ', falling' : ''}`,
   ].filter(Boolean).join(', ')
-  const rise = sun?.sunrise ? formatAtStation(sun.sunrise, offsetMs) : null
-  const set = sun?.sunset ? formatAtStation(sun.sunset, offsetMs) : null
-  const sunSaid = [rise && `sunrise ${rise}`, set && `sunset ${set}`].filter(Boolean).join(', ')
-  // Up to four in a row; five or six go in two even rows.
-  const count = [wx.wind, wx.airTemp, wx.waterTemp, p, rise, set].filter(Boolean).length
-  const cols = count > 4 ? Math.ceil(count / 2) : count
   return (
-    <div className="conditions" style={{ '--cols': cols }} role="img" aria-label={`${[said && `${said}${source ? `, from ${source}` : ''}`, sunSaid].filter(Boolean).join('. ')}.`}>
+    <div className="conditions" role="img" aria-label={`${said}${source ? `. From ${source}` : ''}.`}>
       {wx.wind && (
         <span>
           {wx.wind.deg != null && (
@@ -568,8 +562,6 @@ function Conditions({ wx, source, sun, offsetMs }) {
       {wx.airTemp && <span><b>{tempText(wx.airTemp.f)}</b><small>air</small></span>}
       {wx.waterTemp && <span><b>{tempText(wx.waterTemp.f)}</b><small>sea</small></span>}
       {p && <span><b>{Math.round(p.mb)} {trend}</b><small>mb</small></span>}
-      {rise && <span className="sun-cell"><Icon name="sunrise" size="1.5rem" /><b>{rise}</b></span>}
-      {set && <span className="sun-cell"><Icon name="sunset" size="1.5rem" /><b>{set}</b></span>}
       {source && <em>{source}</em>}
     </div>
   )

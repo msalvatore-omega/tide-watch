@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { heightAt, seriesAt, offsetAt, formatStationTime, formatAtStation, ft, hNum, isMetric } from '../tides.js'
+import { sunTimes } from '../astro.js'
+import Icon from './Icon.jsx'
 
 const PAD = { top: 44, bottom: 50, left: 6, right: 14 }
 const GAUGE_W = 58
@@ -13,12 +15,15 @@ const FUTURE_H = 7 * 24
  * predictions where loaded, else interpolated from highs/lows), with the gauge's
  * measured water drawn over it when the station has a gauge.
  */
-export default function TideChart({ events, now, predicted, observed, flood, gauge = false }) {
+export default function TideChart({ events, now, predicted, observed, flood, gauge = false, coords = null }) {
   const [ref, full] = useWidth()
   const scroller = useRef(null)
   const [away, setAway] = useState(false)
   // With `gauge`, a level gauge stands still at the left on the same scale as the curve.
-  const HEIGHT = gauge ? 230 : 190
+  const PLOT_H = gauge ? 230 : 190
+  // With the station's position, sunrise and sunset are marked in a strip along the foot.
+  const SUN_H = coords ? 40 : 0
+  const HEIGHT = PLOT_H + SUN_H
   const view = Math.max(0, full - (gauge ? GAUGE_W : 0)) // visible width of the scrolling part
   const pxPerHour = (view - PAD.left - PAD.right) / SCREEN_H
   const width = Math.round(PAD.left + PAD.right + pxPerHour * (PAST_H + FUTURE_H))
@@ -48,9 +53,9 @@ export default function TideChart({ events, now, predicted, observed, flood, gau
     ? [['Minor', flood.minor], ['Moderate', flood.moderate], ['Major', flood.major]].filter(([, v]) => v != null && v <= hi)
     : []
   const x = (t) => PAD.left + ((t - start) / (end - start)) * (width - PAD.left - PAD.right)
-  const y = (h) => PAD.top + (1 - (h - lo) / (hi - lo || 1)) * (HEIGHT - PAD.top - PAD.bottom)
+  const y = (h) => PAD.top + (1 - (h - lo) / (hi - lo || 1)) * (PLOT_H - PAD.top - PAD.bottom)
   const toPath = (pts) => pts.map(([t, h], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)} ${y(h).toFixed(1)}`).join(' ')
-  const toArea = (pts, path) => `${path} L${x(pts.at(-1)[0])} ${HEIGHT - PAD.bottom} L${x(pts[0][0])} ${HEIGHT - PAD.bottom} Z`
+  const toArea = (pts, path) => `${path} L${x(pts.at(-1)[0])} ${PLOT_H - PAD.bottom} L${x(pts[0][0])} ${PLOT_H - PAD.bottom} Z`
 
   const line = toPath(samples)
   const nowX = x(now.getTime())
@@ -66,11 +71,28 @@ export default function TideChart({ events, now, predicted, observed, flood, gau
     if (wall.getUTCMinutes() === 0 && wall.getUTCHours() % 6 === 0) ticks.push({ t: new Date(t), midnight: wall.getUTCHours() === 0 })
   }
 
+  // Each sunrise and sunset in view, and the nights between them.
+  const suns = []
+  if (coords) {
+    for (let t = start - 86400e3; t <= end + 86400e3; t += 86400e3) {
+      const day = sunTimes(new Date(t), coords.lat, coords.lng, offsetAt(events, t))
+      if (day.sunrise) suns.push({ type: 'sunrise', time: day.sunrise.getTime() })
+      if (day.sunset) suns.push({ type: 'sunset', time: day.sunset.getTime() })
+    }
+    suns.sort((p, q) => p.time - q.time)
+  }
+  const nights = []
+  for (let i = 0; i < suns.length - 1; i++) {
+    if (suns[i].type === 'sunset' && suns[i + 1].type === 'sunrise') nights.push([Math.max(start, suns[i].time), Math.min(end, suns[i + 1].time)])
+  }
+  const sunMarks = suns.filter((m) => m.time >= start && m.time <= end)
+  const sunTime = (m) => formatAtStation(new Date(m.time), offsetAt(events, m.time))
+  const sunSummary = sunMarks.filter((m) => m.time > now).slice(0, 2).map((m) => `${m.type} ${sunTime(m)}`).join(', ')
   const days = Math.round(FUTURE_H / 24)
   const summary = shown.filter((e) => e.time > now).slice(0, 8)
     .map((e) => `${e.type === 'H' ? 'high water' : 'low water'} ${formatStationTime(e.local)} ${ft(e.height)}`).join(', ')
   const top = PAD.top - 8
-  const bottom = HEIGHT - PAD.bottom
+  const bottom = PLOT_H - PAD.bottom
   const level = latest ? latest[1] : forecastNow
   const ly = level != null ? Math.min(bottom, Math.max(top, y(level))) : bottom
 
@@ -104,19 +126,29 @@ export default function TideChart({ events, now, predicted, observed, flood, gau
         aria-label={`Tide graph. Scroll sideways to see the next ${days} days.`}
         onScroll={(e) => setAway(e.currentTarget.scrollLeft > view * 0.35)}
       >
-      <svg width={width} height={HEIGHT} role="img" aria-label={`Height of tide, observed and predicted, from 9 hours ago to ${days} days ahead. Next: ${summary}.`}>
+      <svg width={width} height={HEIGHT} role="img" aria-label={`Height of tide, observed and predicted, from 9 hours ago to ${days} days ahead. Next: ${summary}.${sunSummary ? ` Then ${sunSummary}.` : ''}`}>
         <defs>
           <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#3aa0e6" stopOpacity="0.4" />
             <stop offset="1" stopColor="#3aa0e6" stopOpacity="0.04" />
           </linearGradient>
         </defs>
+        {nights.filter(([from, to]) => to > from).map(([from, to]) => (
+          <rect key={from} x={x(from)} y={top} width={x(to) - x(from)} height={bottom - top} className="night-band" />
+        ))}
         {ticks.map(({ t, midnight }) => (
           <g key={t.getTime()}>
-            <line x1={x(t)} x2={x(t)} y1={midnight ? 20 : top} y2={HEIGHT - 22} stroke="currentColor" opacity={midnight ? 0.28 : 0.1} />
-            <text x={x(t)} y={HEIGHT - 6} textAnchor="middle" className={midnight ? 'tick day' : 'tick'}>
+            <line x1={x(t)} x2={x(t)} y1={midnight ? 20 : top} y2={PLOT_H - 22} stroke="currentColor" opacity={midnight ? 0.28 : 0.1} />
+            <text x={x(t)} y={PLOT_H - 6} textAnchor="middle" className={midnight ? 'tick day' : 'tick'}>
               {formatAtStation(t, offsetAt(events, t), midnight ? { weekday: 'short', day: 'numeric' } : { hour: 'numeric' })}
             </text>
+          </g>
+        ))}
+        {sunMarks.map((m) => (
+          <g key={m.time} className="sun-mark">
+            <line x1={x(m.time)} x2={x(m.time)} y1={bottom} y2={PLOT_H + 2} />
+            <Icon name={m.type} size={18} x={x(m.time) - 9} y={PLOT_H + 3} />
+            <text x={x(m.time)} y={PLOT_H + 34} textAnchor="middle" className="tick sun">{sunTime(m)}</text>
           </g>
         ))}
         {floodLines.length > 0 && (
@@ -146,7 +178,7 @@ export default function TideChart({ events, now, predicted, observed, flood, gau
             </g>
           )
         })}
-        <line x1={nowX} x2={nowX} y1={22} y2={HEIGHT - PAD.bottom} stroke="#ff4d4d" strokeWidth="2" strokeDasharray="4 3" />
+        <line x1={nowX} x2={nowX} y1={22} y2={PLOT_H - PAD.bottom} stroke="#ff4d4d" strokeWidth="2" strokeDasharray="4 3" />
         {forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="4" className="dot-now-forecast" strokeWidth="2" />}
         {latest && <circle cx={x(latest[0])} cy={y(latest[1])} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
         {!latest && forecastNow != null && <circle cx={nowX} cy={y(forecastNow)} r="6" fill="#ff4d4d" stroke="#fff" strokeWidth="2" />}
