@@ -11,6 +11,16 @@
 
 export const CHANGELOG = [
   {
+    version: '2.12.0',
+    date: '2026-11-28',
+    title: 'A simpler Now page, and a new Info page',
+    changes: [
+      { kind: 'improved', text: 'The Now page is now just the tide: the height, the graph, the next high and low water, the weather at the gauge and any warnings.' },
+      { kind: 'new', text: 'A new Info page holds everything that used to sit beneath: the marine forecast, sun and moon, quick answers, records and large ranges.' },
+      { kind: 'improved', text: 'The Plan page, with tidal windows, My berth and By your rules, has been taken out to keep the app simpler. The four pages are now Now, Week, Map and Info.' },
+    ],
+  },
+  {
     version: '2.11.1',
     date: '2026-11-28',
     title: 'Tighter top of the main picture',

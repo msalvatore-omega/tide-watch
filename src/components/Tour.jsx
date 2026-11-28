@@ -9,7 +9,7 @@ const STEPS = [
   { icon: 'wave', title: 'Welcome aboard', text: 'Tidely shows the tide where you are: the height now, and the next high and low water. Here is a one-minute look around.' },
   { icon: 'trendUp', title: 'The tide now', text: 'The big figure is the height of tide. The gauge and curve beneath show where the water is, where it has been and where it is going; the red line is now. Below are the next high and low water and the conditions at the gauge.' },
   { icon: 'pin', title: 'Your station', text: 'Tap the station name to search by zip code or port. Stations marked “Tide gauge” measure the real water; the rest give predictions only. Tap ☆ to keep favourites one tap away.' },
-  { icon: 'tour', title: 'Four tabs', text: 'Now is the present tide and weather; tap any row beneath it for more. Week draws the next seven days. Plan finds when there is enough water for you. Map shows what every tide gauge around you is reading now; tap one to make it your station.' },
+  { icon: 'tour', title: 'Four tabs', text: 'Now is the present tide, the graph for the week ahead and the weather at the gauge. Week draws the next seven days. Map shows what every tide gauge around you is reading now; tap one to make it your station. Info has the marine forecast, sun and moon, quick answers, records and large ranges.' },
   { icon: 'help', title: 'Help is always there', text: 'Tap any ? for how to read a panel and what its terms mean. Underlined words explain themselves. The ⓘ at the foot of the page has the glossary, units and this tour.' },
 ]
 

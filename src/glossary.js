@@ -22,8 +22,6 @@ export const TERMS = {
   'nautical mile': 'One minute of latitude: 1,852 metres, about 1.15 statute miles.',
   'Beaufort force': 'A 0 to 12 scale of wind strength. Force 4 (11 to 16 knots) is a moderate breeze; force 6 a strong breeze; force 8 a gale.',
   barometer: 'Air pressure. A falling barometer usually means weather is on the way; a fast fall, strong wind.',
-  'under-keel clearance': 'The water between the bottom of your boat and the seabed: depth minus draft.',
-  draft: 'How deep your boat sits in the water, from the waterline to its lowest point.',
   'charted depth': 'The depth printed on the chart at a spot: the depth when the tide is at chart datum.',
   'small craft advisory': 'A National Weather Service warning that wind or waves are hazardous to small boats (typically winds of about 20 to 33 knots).',
 }
@@ -95,30 +93,6 @@ export const EXPLAIN = {
       'Blue dots are high water and amber dots low water, with the time above and the height below. A ring marks the end of an unusually large range.',
     ],
     terms: ['high water', 'low water', 'tidal range', 'chart datum'],
-  },
-  plan: {
-    title: 'Tidal windows',
-    how: [
-      'Drag the green line on the curve to the height you need, and choose above or below. The bars show, day by day, when the tide meets it. Grey is night.',
-      'Tap a green bar for its start, end and length. Add a margin for your draft and for wind, which can shift the times.',
-    ],
-    terms: ['height of tide', 'draft', 'under-keel clearance', 'predicted'],
-  },
-  berth: {
-    title: 'My berth',
-    how: [
-      'Enter the charted depth at your dock, mooring or ramp and your boat\'s draft. Tidely adds the height of tide to show the depth of water there now and the clearance under your keel.',
-      'It also tells you when the water will next be too thin, from the predictions. Wind can change the real level, so keep a margin.',
-    ],
-    terms: ['charted depth', 'draft', 'under-keel clearance', 'height of tide'],
-  },
-  goodtime: {
-    title: 'By your rules',
-    how: [
-      'Three lights for common jobs, each driven by a rule you set: enough water to launch, little enough to work the flats, and the turn of the tide for fishing.',
-      'Green means the rule is met now; amber, within two hours; grey shows the next time. They describe the tide only, not whether it is safe to go.',
-    ],
-    terms: ['height of tide', 'stand', 'slack water'],
   },
   marine: {
     title: 'Marine warnings and forecast',

@@ -13,12 +13,10 @@ import StationPicker from './components/StationPicker.jsx'
 import Instruments, { freshWeather, MoonDisc } from './components/Instruments.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
 import WeekTable from './components/WeekTable.jsx'
-import Planner from './components/Planner.jsx'
 import Glance from './components/Glance.jsx'
 import AlertsPanel, { useSwingAlerts } from './components/AlertsPanel.jsx'
 import { Explain, Glossary } from './components/Explain.jsx'
 import Marine, { useMarine } from './components/Marine.jsx'
-import { useMyWater, RuleLights, Berth, Rules } from './components/MyWater.jsx'
 import Tour from './components/Tour.jsx'
 import Share from './components/Share.jsx'
 import { currentAlerts } from './nws.js'
@@ -29,8 +27,8 @@ const MAX_READING_AGE_MS = 60 * 60e3 // older gauge readings aren't shown as "no
 const TABS = [
   { id: 'now', label: 'Now' },
   { id: 'week', label: 'Week' },
-  { id: 'plan', label: 'Plan' },
   { id: 'map', label: 'Map' },
+  { id: 'info', label: 'Info' },
 ]
 
 const read = (key) => { try { return localStorage.getItem(key) } catch { return null } }
@@ -172,7 +170,6 @@ function Tidely() {
   const tide = events ? tideNow(events, now) : null
   const marine = useMarine(station, online)
   const marineAlerts = marine?.alerts ? currentAlerts(marine.alerts, now) : []
-  const my = useMyWater(stationId, events)
   const flood = useFloodLevels(stationId)
   const todayStart = tide ? new Date(Date.parse(`${stationDate(now, tide.offsetMs)}T00:00:00Z`) - tide.offsetMs) : null
   const historyFacts = useHistoryFacts({ stationId, enabled: Boolean(live), level: live?.height, observed: sixData?.observed, flood, todayStart, offsetMs: tide?.offsetMs })
@@ -436,72 +433,58 @@ function Tidely() {
             </section>
           )}
 
-          <div className="folds">
-            {marine?.forecast.length > 0 && (
-              <Fold icon="cloud" title="Marine forecast" hint={marine.forecast[0].name}>
-                <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />
-              </Fold>
-            )}
-            <Fold icon="sun" title="Sun and moon" hint={moonPhase(now).name}>
-              <Instruments
-                south={south}
-                now={now}
-                sun={sun}
-                moon={moonPhase(now)}
-                moonTimes={moonToday}
-                offsetMs={tide.offsetMs}
-              />
-            </Fold>
-            <Fold icon="rules" title="By your rules" hint="launch · fish · flats">
-              <RuleLights my={my} events={events} now={now} heightNow={view.height} onOpen={() => setTab('plan')} />
-            </Fold>
-            <Fold icon="chat" title="Quick answers" hint="summary · weekend">
-              <Glance
-                key={stationId}
-                station={station}
-                online={online}
-                now={now}
-                events={events}
-                tide={tide}
-                live={live}
-                forecastNow={forecastNow}
-                alerts={swing.alerts}
-                flood={flood}
-                surgeFeet={surgeFeet}
-                weather={weather.status === 'ok' ? weather.data : null}
-              />
-            </Fold>
-            {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
-            {station && (
-              <Fold icon="range" title="Large ranges" hint={swing.alerts?.length ? `${swing.alerts.length} this week` : 'none this week'}>
-                <AlertsPanel
-                  station={station}
-                  now={now}
-                  {...swing}
-                  reading={live}
-                  liveStatus={live ? 'ok' : gaugeDown ? 'error' : noGauge ? 'unavailable' : reading ? 'error' : six.status}
-                />
-              </Fold>
-            )}
-          </div>
         </>
       )}
 
       {tide && tab === 'week' && <WeekTable events={events} now={now} offsetMs={tide.offsetMs} station={station} alerts={swing.alerts} flood={flood} />}
-      {tide && view && tab === 'plan' && (
-        <>
-          <Planner events={events} now={now} station={station} live={live} />
-          <div className="folds">
-            <Fold icon="anchor" title="My berth" hint={my.berth ? 'depth at your spot' : 'set your depth and draft'}>
-              <Berth key={`berth-${stationId}-${metric}`} my={my} events={events} now={now} heightNow={view.height} observed={Boolean(live)} />
-            </Fold>
-            <Fold icon="rules" title="By your rules" hint="launch · fish · flats">
-              <Rules key={`rules-${stationId}`} my={my} events={events} now={now} heightNow={view.height} />
-            </Fold>
-          </div>
-        </>
-      )}
       {tab === 'map' && <MapTab station={station} onPick={(id) => { setStationId(id); setTab('now') }} isFavorite={favs.isFavorite} onToggleFavorite={favs.toggle} />}
+      {tide && view && tab === 'info' && (
+        <div className="folds">
+          {marine?.forecast.length > 0 && (
+            <Fold icon="cloud" title="Marine forecast" hint={marine.forecast[0].name}>
+              <Marine marine={marine} now={now} offsetMs={tide.offsetMs} />
+            </Fold>
+          )}
+          <Fold icon="sun" title="Sun and moon" hint={moonPhase(now).name}>
+            <Instruments
+              south={south}
+              now={now}
+              sun={sun}
+              moon={moonPhase(now)}
+              moonTimes={moonToday}
+              offsetMs={tide.offsetMs}
+            />
+          </Fold>
+          <Fold icon="chat" title="Quick answers" hint="summary · weekend">
+            <Glance
+              key={stationId}
+              station={station}
+              online={online}
+              now={now}
+              events={events}
+              tide={tide}
+              live={live}
+              forecastNow={forecastNow}
+              alerts={swing.alerts}
+              flood={flood}
+              surgeFeet={surgeFeet}
+              weather={weather.status === 'ok' ? weather.data : null}
+            />
+          </Fold>
+          {live && <HistoryFacts history={historyFacts} flood={flood} now={now} offsetMs={tide.offsetMs} />}
+          {station && (
+            <Fold icon="range" title="Large ranges" hint={swing.alerts?.length ? `${swing.alerts.length} this week` : 'none this week'}>
+              <AlertsPanel
+                station={station}
+                now={now}
+                {...swing}
+                reading={live}
+                liveStatus={live ? 'ok' : gaugeDown ? 'error' : noGauge ? 'unavailable' : reading ? 'error' : six.status}
+              />
+            </Fold>
+          )}
+        </div>
+      )}
       </div>
 
       <footer>

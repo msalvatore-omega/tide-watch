@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { sunTimes, isNight, moonPhase, moonTimes, nextMoonEvent } from '../src/astro.js'
-import { findWindows } from '../src/components/Planner.jsx'
 import { BALTIMORE, EST } from './helpers.js'
 
 const EDT = -4 * 3600e3
@@ -71,42 +70,6 @@ describe('moon phase', () => {
     expect(m.nextFull.getTime()).toBeGreaterThan(now.getTime())
     expect(m.nextNew.getTime()).toBeGreaterThan(now.getTime())
     expect(m.nextNew.toISOString().slice(0, 10)).toMatch(/2026-12-0[89]/)
-  })
-})
-
-describe('tide window planner', () => {
-  // A simple tide: high 2 ft, low 0 ft, alternating every 6 hours.
-  const t0 = Date.UTC(2026, 0, 1)
-  const events = Array.from({ length: 9 }, (_, i) => ({ time: new Date(t0 + i * 6 * 3600e3), height: i % 2 ? 0 : 2, type: i % 2 ? 'L' : 'H' }))
-  const from = new Date(t0 + 60e3)
-  const to = new Date(t0 + 47 * 3600e3)
-
-  it('above the midpoint: one window around each high, about half the cycle long', () => {
-    const w = findWindows(events, from, to, 'above', 1)
-    expect(w).toHaveLength(5) // highs at 0, 12, 24, 36 and 48 h (first and last cut by the range)
-    const middle = w[1]
-    expect(middle.peak).toBeCloseTo(2, 2)
-    expect((middle.end - middle.start) / 3600e3).toBeCloseTo(6, 0)
-    expect((middle.start + middle.end) / 2).toBeCloseTo(t0 + 12 * 3600e3, -6)
-  })
-  it('below a level reports the lowest point; unreachable levels give nothing', () => {
-    const w = findWindows(events, from, to, 'below', 0.5)
-    expect(w).toHaveLength(4)
-    expect(w[0].peak).toBeCloseTo(0, 2)
-    expect((w[0].end - w[0].start) / 3600e3).toBeGreaterThan(3.5)
-    expect((w[0].end - w[0].start) / 3600e3).toBeLessThan(4.5)
-    expect(findWindows(events, from, to, 'above', 2.5)).toEqual([])
-    expect(findWindows(events, from, to, 'below', -1)).toEqual([])
-  })
-  it('respects an extra filter such as daylight, including for the peak', () => {
-    const afternoonOnly = (t) => new Date(t).getUTCHours() >= 13 && new Date(t).getUTCHours() < 20
-    const w = findWindows(events, from, to, 'above', 1, afternoonOnly)
-    expect(w.length).toBeGreaterThan(0)
-    for (const x of w) {
-      expect(new Date(x.start).getUTCHours()).toBeGreaterThanOrEqual(13)
-      expect(new Date(x.end).getUTCHours()).toBeLessThan(20)
-      expect(x.peak).toBeLessThan(2) // the true high (noon/midnight) is outside the allowed hours
-    }
   })
 })
 

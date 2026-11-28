@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { usualRange, heightContext, agreement, berthNow, defaultRules, ruleStatus } from '../src/insight.js'
+import { usualRange, heightContext, agreement } from '../src/insight.js'
 import { currentAlerts } from '../src/nws.js'
-import { ft, tempText, setMetric, toFeet, fromFeet, heightAt } from '../src/tides.js'
+import { ft, tempText, setMetric, toFeet, fromFeet } from '../src/tides.js'
 import { baltimoreEvents, NOW } from './helpers.js'
 
 afterEach(() => setMetric(false))
@@ -50,72 +50,6 @@ describe('agreement between gauge and predictions', () => {
     expect(agreement({ predicted: series(0), observed: [] }, NOW)).toBeNull()
     expect(agreement({ predicted: series(0), observed: series(0).slice(-5) }, NOW)).toBeNull()
     expect(agreement(null, NOW)).toBeNull()
-  })
-})
-
-describe('my berth', () => {
-  it('adds the height of tide to the charted depth', async () => {
-    const events = await baltimoreEvents()
-    const b = berthNow({ charted: 4, draft: 3.5 }, events, NOW, 1.2)
-    expect(b.depth).toBeCloseTo(5.2, 6)
-    expect(b.clearance).toBeCloseTo(1.7, 6)
-    expect(b.afloat).toBe(true)
-    expect(b.least.depth).toBeLessThanOrEqual(b.depth + 2)
-  })
-  it('finds when the boat takes the ground and floats again', async () => {
-    const events = await baltimoreEvents()
-    const h = heightAt(events, NOW)
-    // a draft that leaves 0.2 ft under the keel on the predictions now
-    const afloat = berthNow({ charted: 0, draft: h - 0.2 }, events, NOW, h)
-    if (afloat.change) {
-      expect(afloat.change > NOW).toBe(true)
-      expect(heightAt(events, afloat.change)).toBeLessThanOrEqual(h - 0.2 + 0.05)
-    }
-    const aground = berthNow({ charted: 0, draft: h + 0.2 }, events, NOW, h)
-    expect(aground.afloat).toBe(false)
-    expect(aground.clearance).toBeCloseTo(-0.2, 6)
-  })
-  it('needs both figures', async () => {
-    const events = await baltimoreEvents()
-    expect(berthNow({ charted: NaN, draft: 3 }, events, NOW, 1)).toBeNull()
-  })
-})
-
-describe('by your rules', () => {
-  it('starting rules come from the usual tide here', async () => {
-    const events = await baltimoreEvents()
-    const r = defaultRules(events)
-    const u = usualRange(events)
-    expect(r.launch.min).toBeGreaterThan(u.low)
-    expect(r.launch.min).toBeLessThan(u.high)
-    expect(r.flats.max).toBeLessThan(r.launch.min)
-    expect(r.turn.minutes).toBe(60)
-  })
-  it('height rules: met now with an end, or not met with a next start', async () => {
-    const events = await baltimoreEvents()
-    const h = heightAt(events, NOW)
-    const on = ruleStatus('launch', { min: h - 0.3 }, events, NOW, h)
-    expect(on.on).toBe(true)
-    if (on.until) expect(heightAt(events, on.until)).toBeLessThan(h - 0.3 + 0.05)
-    const off = ruleStatus('launch', { min: h + 0.3 }, events, NOW, h)
-    expect(off.on).toBe(false)
-    if (off.next) expect(heightAt(events, off.next)).toBeGreaterThanOrEqual(h + 0.3 - 0.05)
-    expect(ruleStatus('flats', { max: h + 0.3 }, events, NOW, h).on).toBe(true)
-  })
-  it('the gauge decides "now" when it disagrees with the predictions', async () => {
-    const events = await baltimoreEvents()
-    const h = heightAt(events, NOW)
-    expect(ruleStatus('launch', { min: h + 0.5 }, events, NOW, h + 1).on).toBe(true)
-  })
-  it('fishing the turn: within the chosen time of high or low water', async () => {
-    const events = await baltimoreEvents()
-    const e = events.find((x) => x.time > NOW)
-    const at = (mins) => new Date(e.time.getTime() + mins * 60e3)
-    expect(ruleStatus('turn', { minutes: 60 }, events, at(-30), 0).on).toBe(true)
-    expect(ruleStatus('turn', { minutes: 60 }, events, at(30), 0).until).toEqual(at(60))
-    const before = ruleStatus('turn', { minutes: 60 }, events, at(-90), 0)
-    expect(before.on).toBe(false)
-    expect(before.next).toEqual(at(-60))
   })
 })
 
