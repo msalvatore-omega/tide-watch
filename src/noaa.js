@@ -111,6 +111,26 @@ export const fetchAllStations = () => fetchStationList('tidepredictions')
 export const fetchLiveStations = () => fetchStationList('waterlevels')
 
 /**
+ * The latest gauge reading at a station, for the map: height (feet above MLLW), when it
+ * was measured, and whether the water has risen or fallen over the last half hour or so.
+ * null when the gauge has reported nothing in the last hour. Kept for 5 minutes.
+ */
+export const fetchLevelNow = (stationId) =>
+  once(`level:${stationId}`, async () => {
+    const json = await getJson(
+      `${DATA_API}?product=water_level&datum=MLLW&units=english&time_zone=gmt&format=json` +
+      `&station=${encodeURIComponent(stationId)}&range=1&application=${APP_NAME}`,
+    ).catch((e) => { if (e.noData) return { data: [] }; throw e })
+    const pts = (json.data ?? []).filter((r) => r.v !== '' && r.v != null).map((r) => ({ time: toTime(r.t), height: Number(r.v) }))
+    const last = pts.at(-1)
+    // (a saved copy served while offline would be old: never show that as "now")
+    if (!last || Date.now() - last.time > 3600e3) return null
+    const earlier = pts.findLast((p) => last.time - p.time >= 24 * 60e3) ?? pts[0]
+    const change = last.height - earlier.height
+    return { height: last.height, time: last.time, trend: pts.length < 3 ? null : change > 0.04 ? 'rising' : change < -0.04 ? 'falling' : 'steady' }
+  }, 5 * 60e3)
+
+/**
  * Live gauge readings (every 6 minutes, ~5-10 min delay) for the last 26 hours,
  * plus NOAA's exact 6-minute predictions over the same span (and 8 hours ahead)
  * so measured and predicted can be compared point for point.

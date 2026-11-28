@@ -1,8 +1,15 @@
 // Stations on a map (loaded only when the map is opened). Filled markers have a tide
 // gauge; hollow ones give predictions only. Tap a marker, then "Show this station".
-import { useEffect, useRef } from 'react'
+// Zoomed in, each gauge in view is labelled with the height of tide it is reading now.
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { fetchLevelNow } from '../noaa.js'
+import { ft } from '../tides.js'
+
+const MAX_LEVELS = 30 // gauges read at once: the nearest to the middle of the map
+const ARROW = { rising: '▲', falling: '▼', steady: '◆' }
+const TREND = { rising: 'rising', falling: 'falling', steady: 'steady' }
 
 export default function StationMap({ stations, liveIds, liveOnly, center, me, focus, onLocate, locating, onPick, isFavorite, onToggleFavorite }) {
   const meLayer = useRef(null)
@@ -10,6 +17,12 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
   const map = useRef(null)
   const layer = useRef(null)
   const handlers = useRef({})
+  const levelLayer = useRef(null)
+  const [view, setView] = useState(0) // bumps when the map stops moving
+  const [levels, setLevels] = useState(() => new Map()) // station id → reading, or null for none
+  const [inView, setInView] = useState({ ids: [], more: false })
+  const levelsRef = useRef(levels)
+  levelsRef.current = levels
   handlers.current = { onPick, isFavorite, onToggleFavorite }
 
   useEffect(() => {
@@ -21,6 +34,8 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
     map.current = m
     layer.current = L.layerGroup().addTo(m)
     meLayer.current = L.layerGroup().addTo(m)
+    levelLayer.current = L.layerGroup().addTo(m)
+    m.on('moveend', () => setView((v) => v + 1))
     return () => { m.remove(); map.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -69,6 +84,10 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
         const kind = document.createElement('span')
         kind.className = live ? 'kind live' : 'kind'
         kind.textContent = live ? '● Tide gauge' : 'Predictions only'
+        const reading = levelsRef.current.get(s.id)
+        const level = document.createElement('span')
+        level.className = 'map-pop-level'
+        if (reading) level.textContent = `${ft(reading.height)}${reading.trend ? ` ${ARROW[reading.trend]} ${TREND[reading.trend]}` : ''} · observed ${Math.max(0, Math.round((Date.now() - reading.time) / 60e3))} min ago`
         const row = document.createElement('div')
         row.className = 'map-pop-row'
         const go = document.createElement('button')
@@ -88,12 +107,63 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
         paint()
         star.onclick = () => { onToggleFavorite(s); setTimeout(() => { const f = star.textContent === '★'; star.textContent = f ? '☆' : '★'; star.className = f ? 'result-star' : 'result-star on'; star.setAttribute('aria-pressed', String(!f)) }, 0) }
         row.append(go, star)
-        box.append(name, kind, row)
+        box.append(name, kind, ...(reading ? [level] : []), row)
         return box
       })
       marker.addTo(group)
     }
   }, [stations, liveIds, liveOnly])
+
+  // Which gauges are in view: the nearest MAX_LEVELS to the middle of the map.
+  useEffect(() => {
+    const m = map.current
+    if (!m || !stations || !liveIds) return
+    const bounds = m.getBounds()
+    const mid = m.getCenter()
+    const seen = stations.filter((s) => s.lat != null && liveIds.has(s.id) && bounds.contains([s.lat, s.lng]))
+    const ids = seen
+      .map((s) => ({ id: s.id, d: (s.lat - mid.lat) ** 2 + (s.lng - mid.lng) ** 2 }))
+      .sort((a, b) => a.d - b.d).slice(0, MAX_LEVELS).map((x) => x.id)
+    setInView({ ids, more: seen.length > ids.length })
+  }, [view, stations, liveIds])
+
+  // Read them, a few at a time, and again every 6 minutes while the map is open.
+  const idsKey = inView.ids.join(',')
+  useEffect(() => {
+    if (!idsKey) return
+    let cancelled = false
+    const read = async () => {
+      const queue = idsKey.split(',')
+      const worker = async () => {
+        while (queue.length && !cancelled) {
+          const id = queue.shift()
+          const reading = await fetchLevelNow(id).catch(() => undefined)
+          if (cancelled || reading === undefined) continue
+          setLevels((old) => new Map(old).set(id, reading))
+        }
+      }
+      await Promise.all(Array.from({ length: 5 }, worker))
+    }
+    read()
+    const timer = setInterval(read, 6 * 60e3)
+    return () => { cancelled = true; clearInterval(timer) }
+  }, [idsKey])
+
+  // Label each gauge in view with its reading.
+  useEffect(() => {
+    const group = levelLayer.current
+    if (!group || !stations) return
+    group.clearLayers()
+    for (const id of inView.ids) {
+      const reading = levels.get(id)
+      const s = reading && stations.find((x) => x.id === id)
+      if (!s) continue
+      const html = `<span class="map-level ${reading.trend ?? ''}">${ft(reading.height)}${reading.trend ? ` <b>${ARROW[reading.trend]}</b>` : ''}</span>`
+      L.marker([s.lat, s.lng], { icon: L.divIcon({ className: 'map-level-icon', html, iconSize: [0, 0] }), interactive: false, keyboard: false }).addTo(group)
+    }
+  }, [levels, inView, stations])
+
+  const shownLevels = inView.ids.map((id) => [stations?.find((s) => s.id === id), levels.get(id)]).filter(([s, r]) => s && r)
 
   return (
     <div className="map-wrap">
@@ -107,6 +177,16 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
           </button>
         )}
       </div>
+      <p className="hint small-print map-level-note" aria-live="polite">
+        {!liveIds ? 'Finding the tide gauges…'
+          : !inView.ids.length ? 'No tide gauges in this part of the map.'
+          : shownLevels.length ? `Height of tide observed now at ${shownLevels.length} gauge${shownLevels.length === 1 ? '' : 's'}${inView.more ? ' nearest the middle; zoom in for the rest' : ''}. ▲ rising · ▼ falling · ◆ steady.`
+          : 'Reading the gauges…'}
+      </p>
+      {/* the same readings as text, for screen readers */}
+      <ul className="sr-only">
+        {shownLevels.map(([s, r]) => <li key={s.id}>{s.name}: {ft(r.height)}{r.trend ? `, ${TREND[r.trend]}` : ''}</li>)}
+      </ul>
       <p className="legend-line">
         <span><i className="lg map-gauge" /> Tide gauge (observed)</span>
         <span><i className="lg map-pred" /> Predictions only</span>

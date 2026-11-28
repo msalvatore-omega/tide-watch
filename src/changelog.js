@@ -11,6 +11,15 @@
 
 export const CHANGELOG = [
   {
+    version: '2.7.0',
+    date: '2026-11-28',
+    title: 'Height of tide on the map',
+    changes: [
+      { kind: 'new', text: 'The station map now shows the height of tide each gauge is reading right now, with an arrow for rising, falling or steady, so you can compare the water up and down the coast at a glance.' },
+      { kind: 'new', text: 'Tap a gauge on the map to see its reading and how many minutes ago it was taken. Readings refresh every 6 minutes while the map is open.' },
+    ],
+  },
+  {
     version: '2.6.2',
     date: '2026-11-28',
     title: 'Fixes from a full check of the app',
