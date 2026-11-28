@@ -398,11 +398,14 @@ function Tidely() {
                 </span>
               </div>
               <div className="hero-moon" role="img" aria-label={`Moon: ${moon.name}, ${Math.round(moon.illumination * 100)} percent lit, ${moonAhead.replace(/ d$/, ' days').replace('full', 'full moon').replace('new', 'new moon')}${moon.tides === 'spring' ? ', spring tides' : moon.tides === 'neap' ? ', neap tides' : ''}${moonNextText ? `. Next ${moonNextText}` : ''}.`}>
-                <MoonDisc moon={moon} size={64} south={south} />
-                <strong aria-hidden="true" className="hero-moon-name">{moon.name}</strong>
-                <small aria-hidden="true">{moonAhead}</small>
-                {moon.tides && <small aria-hidden="true">{moon.tides === 'spring' ? 'spring tides' : 'neap tides'}</small>}
-                {moonNext && <small aria-hidden="true" className="hero-moon-next">{moonNext.type === 'rise' ? '↑' : '↓'} {formatAtStation(moonNext.time, tide.offsetMs)}</small>}
+                <MoonDisc moon={moon} size={48} south={south} />
+                <div className="hero-moon-text" aria-hidden="true">
+                  <strong className="hero-moon-name">{moon.name}</strong>
+                  <small>{moonAhead}</small>
+                  <small className="hero-moon-next">
+                    {[moon.tides && (moon.tides === 'spring' ? 'springs' : 'neaps'), moonNext && `${moonNext.type === 'rise' ? '↑' : '↓'} ${formatAtStation(moonNext.time, tide.offsetMs)}`].filter(Boolean).join(' · ')}
+                  </small>
+                </div>
               </div>
               <Explain id="scene" />
             </div>

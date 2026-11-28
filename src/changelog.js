@@ -11,6 +11,14 @@
 
 export const CHANGELOG = [
   {
+    version: '2.11.1',
+    date: '2026-11-28',
+    title: 'Tighter top of the main picture',
+    changes: [
+      { kind: 'improved', text: 'The top of the main picture is more compact. The moon now shares a row with the big height figure, with its phase, days to full or new, and next moonrise or moonset written beside it instead of underneath, and flood or ebb runs in one band below.' },
+    ],
+  },
+  {
     version: '2.11.0',
     date: '2026-11-28',
     title: 'Sunrise and sunset on the tide graph',
