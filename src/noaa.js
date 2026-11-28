@@ -111,36 +111,52 @@ export const fetchAllStations = () => fetchStationList('tidepredictions')
 export const fetchLiveStations = () => fetchStationList('waterlevels')
 
 /**
- * The next high and low waters at a station (about a day's worth), for the map's
- * pop-up: [{ type: 'H' | 'L', time, height }]. Kept for 30 minutes.
+ * High and low waters at a station from about 13 hours ago to 30 hours ahead (so the
+ * tide now can be worked out between them): [{ type: 'H' | 'L', time, height }]. Kept
+ * for 30 minutes.
  */
 export const fetchNextTides = (stationId) =>
   once(`next:${stationId}`, async () => {
     const json = await getJson(
       `${DATA_API}?product=predictions&interval=hilo&datum=MLLW&units=english&time_zone=gmt&format=json` +
-      `&station=${encodeURIComponent(stationId)}&begin_date=${sixMinBegin(1)}&range=30&application=${APP_NAME}`,
+      `&station=${encodeURIComponent(stationId)}&begin_date=${sixMinBegin(13)}&range=43&application=${APP_NAME}`,
     )
     return (json.predictions ?? []).map((r) => ({ type: r.type, time: toTime(r.t), height: Number(r.v) }))
   }, 30 * 60e3)
 
 /**
  * The latest gauge reading at a station, for the map: height (feet above MLLW), when it
- * was measured, and whether the water has risen or fallen over the last half hour or so.
- * null when the gauge has reported nothing in the last hour. Kept for 5 minutes.
+ * was measured, whether the water has risen or fallen over the last half hour or so, and
+ * `diff`: how far it stands above (+) or below (−) the prediction for that moment (null
+ * if the prediction could not be had). null when the gauge has reported nothing in the
+ * last hour. Kept for 5 minutes.
  */
 export const fetchLevelNow = (stationId) =>
   once(`level:${stationId}`, async () => {
-    const json = await getJson(
-      `${DATA_API}?product=water_level&datum=MLLW&units=english&time_zone=gmt&format=json` +
-      `&station=${encodeURIComponent(stationId)}&range=1&application=${APP_NAME}`,
-    ).catch((e) => { if (e.noData) return { data: [] }; throw e })
+    const url = (product) =>
+      `${DATA_API}?product=${product}&datum=MLLW&units=english&time_zone=gmt&format=json` +
+      `&station=${encodeURIComponent(stationId)}&range=1&application=${APP_NAME}`
+    const [json, pred] = await Promise.all([
+      getJson(url('water_level')).catch((e) => { if (e.noData) return { data: [] }; throw e }),
+      getJson(url('predictions')).catch(() => ({})), // the reading is still worth showing without it
+    ])
     const pts = (json.data ?? []).filter((r) => r.v !== '' && r.v != null).map((r) => ({ time: toTime(r.t), height: Number(r.v) }))
     const last = pts.at(-1)
     // (a saved copy served while offline would be old: never show that as "now")
     if (!last || Date.now() - last.time > 3600e3) return null
     const earlier = pts.findLast((p) => last.time - p.time >= 24 * 60e3) ?? pts[0]
     const change = last.height - earlier.height
-    return { height: last.height, time: last.time, trend: pts.length < 3 ? null : change > 0.04 ? 'rising' : change < -0.04 ? 'falling' : 'steady' }
+    // The prediction for the moment of the reading (they share the same 6-minute marks).
+    const predicted = (pred.predictions ?? [])
+      .map((r) => ({ time: toTime(r.t), height: Number(r.v) }))
+      .filter((p) => Number.isFinite(p.height) && Math.abs(p.time - last.time) <= 6 * 60e3)
+      .sort((a, b) => Math.abs(a.time - last.time) - Math.abs(b.time - last.time))[0]
+    return {
+      height: last.height,
+      time: last.time,
+      trend: pts.length < 3 ? null : change > 0.04 ? 'rising' : change < -0.04 ? 'falling' : 'steady',
+      diff: predicted ? last.height - predicted.height : null,
+    }
   }, 5 * 60e3)
 
 /**

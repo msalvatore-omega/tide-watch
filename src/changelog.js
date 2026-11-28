@@ -11,6 +11,17 @@
 
 export const CHANGELOG = [
   {
+    version: '2.10.0',
+    date: '2026-11-28',
+    title: 'Surge colours, favorites at a glance, sunrise and sunset',
+    changes: [
+      { kind: 'new', text: 'On the Map page each tide gauge is now coloured by how the water stands against the prediction: green when close to it, amber to dark red when higher, blue when lower. A storm pushing water up a bay shows at a glance, and the key is under the map.' },
+      { kind: 'new', text: 'Tap a gauge on the map and it also says how far the water is above or below prediction.' },
+      { kind: 'new', text: 'Your favorite stations along the top now each show the height of tide there and whether it is rising or falling, so you can compare your spots without switching. A filled dot means observed by a gauge, a hollow one means predicted.' },
+      { kind: 'new', text: 'Sunrise and sunset icons with today\'s exact times now sit on the main picture, beside the wind and temperatures.' },
+    ],
+  },
+  {
     version: '2.9.0',
     date: '2026-11-28',
     title: 'Currents page removed',

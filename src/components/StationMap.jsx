@@ -6,8 +6,20 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { fetchLevelNow, fetchNextTides, fetchConditions } from '../noaa.js'
 import { ft, formatCountdown, tempText } from '../tides.js'
+import { diffText } from '../surge.js'
 
 const MAX_LEVELS = 30 // gauges read at once: the nearest to the middle of the map
+// A gauge is coloured by how far its reading stands above or below the prediction (feet).
+const SURGE = [
+  { from: 2, colour: '#8e1b1b', key: (f) => `${f(2)}+ above` },
+  { from: 1, colour: '#d9480f', key: (f) => `${f(1)}+ above` },
+  { from: 0.5, colour: '#e0a000', key: (f) => `${f(0.5)}+ above` },
+  { from: -0.5, colour: '#2f8f5b', key: () => 'near prediction' },
+  { from: -1, colour: '#4c9be8', key: (f) => `${f(0.5)}+ below` },
+  { from: -Infinity, colour: '#1d4fa3', key: (f) => `${f(1)}+ below` },
+]
+const NO_READING = '#5b6b7b'
+const surgeColour = (diff) => (diff == null ? NO_READING : SURGE.find((b) => diff >= b.from).colour)
 const ARROW = { rising: '▲', falling: '▼', steady: '◆' }
 const TREND = { rising: 'rising', falling: 'falling', steady: 'steady' }
 
@@ -18,6 +30,7 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
   const layer = useRef(null)
   const handlers = useRef({})
   const levelLayer = useRef(null)
+  const gaugeMarkers = useRef(new Map()) // station id → its dot, to colour once it is read
   const [view, setView] = useState(0) // bumps when the map stops moving
   const [levels, setLevels] = useState(() => new Map()) // station id → reading, or null for none
   const [inView, setInView] = useState({ ids: [], more: false })
@@ -69,6 +82,7 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
     const group = layer.current
     if (!group || !stations) return
     group.clearLayers()
+    gaugeMarkers.current.clear()
     // Gauges are drawn last so they sit on top.
     const ordered = [...stations].sort((a, b) => Number(liveIds?.has(a.id) ?? false) - Number(liveIds?.has(b.id) ?? false))
     for (const s of ordered) {
@@ -77,8 +91,9 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
       if (liveOnly && !live) continue
       if (s.id === currentId) L.circleMarker([s.lat, s.lng], { radius: 14, color: '#12263a', weight: 3, fill: false, interactive: false }).addTo(group)
       const marker = L.circleMarker([s.lat, s.lng], live
-        ? { radius: 8, color: '#fff', weight: 2, fillColor: '#c2272d', fillOpacity: 1 }
+        ? { radius: 8, color: '#fff', weight: 2, fillColor: surgeColour(levelsRef.current.get(s.id)?.diff), fillOpacity: 1 }
         : { radius: 6, color: '#1d6fb3', weight: 2, fillColor: '#fff', fillOpacity: 0.9 })
+      if (live) gaugeMarkers.current.set(s.id, marker)
       // Built once each time the pop-up opens. (Leaflet asks for the content again whenever
       // the pop-up is re-measured, which happens as each detail line arrives.)
       let built = null
@@ -117,6 +132,14 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
             ].filter(Boolean)
             if (parts.length) line(parts.join(' · '))
           }).catch(() => {})
+        }
+        if (reading?.diff != null) {
+          const off = document.createElement('span')
+          off.className = 'map-pop-surge'
+          const dot = document.createElement('i')
+          dot.style.background = surgeColour(reading.diff)
+          off.append(dot, diffText(reading.diff).replace(/^\S/, (c) => c.toUpperCase()))
+          extra.append(off)
         }
         const row = document.createElement('div')
         row.className = 'map-pop-row'
@@ -215,6 +238,14 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
     setCrowded(hidden)
   }, [levels, inView, stations, currentId])
 
+  // Colour each gauge that has been read.
+  useEffect(() => {
+    for (const [id, marker] of gaugeMarkers.current) {
+      const reading = levels.get(id)
+      if (reading) marker.setStyle({ fillColor: surgeColour(reading.diff) })
+    }
+  }, [levels, stations, liveIds, liveOnly, currentId])
+
   const shownLevels = inView.ids.map((id) => [stations?.find((s) => s.id === id), levels.get(id)]).filter(([s, r]) => s && r)
 
   return (
@@ -237,11 +268,13 @@ export default function StationMap({ stations, liveIds, liveOnly, center, me, fo
       </p>
       {/* the same readings as text, for screen readers */}
       <ul className="sr-only">
-        {shownLevels.map(([s, r]) => <li key={s.id}>{s.name}: {ft(r.height)}{r.trend ? `, ${TREND[r.trend]}` : ''}</li>)}
+        {shownLevels.map(([s, r]) => <li key={s.id}>{s.name}: {ft(r.height)}{r.trend ? `, ${TREND[r.trend]}` : ''}{r.diff != null ? `, ${diffText(r.diff)}` : ''}</li>)}
       </ul>
       <p className="legend-line">
-        <span><i className="lg map-gauge" /> Tide gauge (observed)</span>
-        <span><i className="lg map-pred" /> Predictions only</span>
+        <span>Gauge colour, observed against predicted:</span>
+        {[...SURGE].reverse().map((b) => <span key={b.from}><i className="lg" style={{ background: b.colour }} /> {b.key(ft)}</span>)}
+        <span><i className="lg" style={{ background: NO_READING }} /> no reading yet</span>
+        {!liveOnly && <span><i className="lg map-pred" /> Predictions only</span>}
         {me && <span><i className="lg map-me" /> You</span>}
       </p>
     </div>

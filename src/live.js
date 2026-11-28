@@ -1,6 +1,7 @@
 // Live data hooks: 6-minute predictions + gauge readings, and gauge weather.
 import { useEffect, useRef, useState } from 'react'
-import { fetchSixMinute, fetchConditions, fetchLiveStations, distanceMiles } from './noaa.js'
+import { fetchSixMinute, fetchConditions, fetchLiveStations, fetchLevelNow, fetchNextTides, distanceMiles } from './noaa.js'
+import { heightAt } from './tides.js'
 
 export { DEFAULT_SURGE_FT, SURGE_CHOICES, isSurge, liveNow, diffText, liveMood } from './surge.js'
 
@@ -62,6 +63,39 @@ export function useNearestLiveGauge(station, wanted) {
     return () => { cancelled = true }
   }, [station, wanted])
   return wanted && nearest?.forId === station?.id ? nearest : null
+}
+
+/**
+ * The tide at a station right now, as briefly as possible: the gauge's reading where
+ * there is one, else the predicted height worked out between high and low water.
+ * { height, trend: 'rising' | 'falling' | 'steady' | null, observed } or null.
+ */
+export async function stationGlance(stationId, now = new Date()) {
+  const level = await fetchLevelNow(stationId).catch(() => null)
+  if (level) return { height: level.height, trend: level.trend, observed: true }
+  const tides = await fetchNextTides(stationId)
+  const height = heightAt(tides, now)
+  const next = tides.find((e) => e.time > now)
+  return height == null ? null : { height, trend: next.type === 'H' ? 'rising' : 'falling', observed: false }
+}
+
+/** A glance for each favorite station (id → glance), refreshed every 6 minutes. */
+export function useFavoriteGlances(favorites) {
+  const [glances, setGlances] = useState({})
+  const ids = favorites.map((f) => f.id).join(',')
+  useEffect(() => {
+    if (!ids) return
+    let cancelled = false
+    const read = () => {
+      for (const id of ids.split(',')) {
+        stationGlance(id).then((g) => !cancelled && setGlances((old) => ({ ...old, [id]: g })), () => {})
+      }
+    }
+    read()
+    const timer = setInterval(read, 6 * 60e3)
+    return () => { cancelled = true; clearInterval(timer) }
+  }, [ids])
+  return glances
 }
 
 /**

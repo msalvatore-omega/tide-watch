@@ -43,6 +43,47 @@ describe('latest gauge reading for the map', () => {
       { type: 'L', time: new Date('2026-11-28T13:10:00Z'), height: 0.21 },
       { type: 'H', time: new Date('2026-11-28T19:06:00Z'), height: 1.8 },
     ])
-    expect(fetch.mock.calls[0][0]).toMatch(/product=predictions&interval=hilo.*time_zone=gmt.*range=30/)
+    expect(fetch.mock.calls[0][0]).toMatch(/product=predictions&interval=hilo.*time_zone=gmt.*range=43/)
+  })
+  it('says how far the reading stands above or below the prediction', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => ({
+      status: 200,
+      json: async () => (url.includes('product=predictions')
+        ? { predictions: [{ t: '2026-11-28 14:48', v: '1.050' }, { t: '2026-11-28 14:54', v: '1.100' }] }
+        : rows([['2026-11-28 14:30', 1.5], ['2026-11-28 14:42', 1.6], ['2026-11-28 14:54', 1.72]])),
+    })))
+    const r = await fetchLevelNow('8574680')
+    expect(r.diff).toBeCloseTo(0.62, 5)
+    expect(r.trend).toBe('rising')
+  })
+  it('still gives the reading when the prediction cannot be had', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url.includes('product=predictions')) throw new Error('network')
+      return { status: 200, json: async () => rows([['2026-11-28 14:30', 1.5], ['2026-11-28 14:42', 1.5], ['2026-11-28 14:54', 1.5]]) }
+    }))
+    const r = await fetchLevelNow('8574680')
+    expect(r.height).toBe(1.5)
+    expect(r.diff).toBeNull()
+  })
+})
+
+describe('a favorite station at a glance', () => {
+  it('uses the gauge where there is one', async () => {
+    stub(rows([['2026-11-28 14:12', 2.0], ['2026-11-28 14:30', 1.9], ['2026-11-28 14:54', 1.7]]))
+    const { stationGlance } = await import('../src/live.js')
+    expect(await stationGlance('1', new Date(NOW))).toEqual({ height: 1.7, trend: 'falling', observed: true })
+  })
+  it('falls back to the predicted height between high and low water', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => ({
+      status: 200,
+      json: async () => (url.includes('interval=hilo')
+        ? { predictions: [{ t: '2026-11-28 12:00', v: '0.0', type: 'L' }, { t: '2026-11-28 18:00', v: '2.0', type: 'H' }] }
+        : { error: { message: 'No data was found.' } }),
+    })))
+    const { stationGlance } = await import('../src/live.js')
+    const g = await stationGlance('2', new Date(NOW)) // half way from low to high water
+    expect(g.observed).toBe(false)
+    expect(g.trend).toBe('rising')
+    expect(g.height).toBeCloseTo(1.0, 5)
   })
 })

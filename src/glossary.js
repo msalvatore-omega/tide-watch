@@ -34,14 +34,15 @@ export const EXPLAIN = {
     how: [
       'The big figure is the height of tide now, and whether it is flooding or ebbing. The gauge on the left is filled to that height, on the same scale as the curve beside it.',
       'The curve starts 9 hours ago and runs 7 days ahead: slide it sideways with your thumb to look into the coming week, and press Now to come back. Dashed blue is the prediction, red is what the gauge has measured, and the red dashed line is now. Dots mark high and low water; the orange line is flood stage.',
-      'The moon at the top is drawn at tonight\'s phase, with the phase named beneath it and the days to the next full or new moon; near new and full moon the tides are springs, with larger ranges. Beneath are the next high and low water, and the wind, air and sea temperature and barometer at the gauge.',
+      'The moon at the top is drawn at tonight\'s phase, with the phase named beneath it and the days to the next full or new moon; near new and full moon the tides are springs, with larger ranges. Beneath are the next high and low water, the wind, air and sea temperature and barometer at the gauge, and today\'s sunrise and sunset.',
     ],
     terms: ['height of tide', 'high water', 'low water', 'flood', 'ebb', 'observed', 'predicted', 'flood stage', 'springs', 'neaps', 'chart datum', 'knot', 'barometer'],
   },
   map: {
     title: 'The map',
     how: [
-      'Red dots are tide gauges. Each is labelled with the height of tide it is reading now and an arrow: up for rising, down for falling, a diamond for steady. Readings refresh every 6 minutes.',
+      'Filled dots are tide gauges. Each is labelled with the height of tide it is reading now and an arrow: up for rising, down for falling, a diamond for steady. Readings refresh every 6 minutes.',
+      'The colour of a dot shows how the water stands against the prediction: green is close to it, amber to dark red is higher than predicted (wind or storm surge pushing water in), blue is lower. The key under the map gives the steps.',
       'Tap any station for its reading, the next high and low water, and the wind and temperatures where the gauge measures them. From there you can make it your station or star it as a favorite.',
       'Where gauges crowd together some labels are left off so they do not overlap: zoom in, or tap the gauge. The dark ring marks your current station, and the round button shows where you are.',
     ],

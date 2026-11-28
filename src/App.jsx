@@ -2,7 +2,7 @@ import Icon from './components/Icon.jsx'
 import { Component, useEffect, useRef, useState } from 'react'
 import { fetchHiLo, fetchStationInfo } from './noaa.js'
 import { tideNow, offsetAt, seriesAt, stationDate, formatStationTime, formatAtStation, formatCountdown, nmText, hwlw, hDiff, tempText, setClock24, isClock24, setMetric, isMetric, ft } from './tides.js'
-import { useSixMinute, useConditions, useNearestLiveGauge, useGaugeListed, useOnline, liveNow, isSurge, diffText } from './live.js'
+import { useSixMinute, useConditions, useNearestLiveGauge, useFavoriteGlances, useGaugeListed, useOnline, liveNow, isSurge, diffText } from './live.js'
 import { sunTimes, moonPhase, moonTimes, nextMoonEvent } from './astro.js'
 import { useFavorites } from './favorites.js'
 import { useFloodLevels, useHistoryFacts, floodStage } from './history.js'
@@ -95,6 +95,7 @@ function Tidely() {
 
   // Save favorites' predictions in the background so they're available offline.
   const favoriteIds = favs.favorites.map((f) => f.id).join(',')
+  const glances = useFavoriteGlances(favs.favorites)
   useEffect(() => {
     if (!online || !favoriteIds) return
     const timer = setTimeout(() => {
@@ -255,6 +256,7 @@ function Tidely() {
   }
   const moon = moonPhase(now)
   const south = station?.lat != null && station.lat < 0 // the moon looks upside down from there
+  const sun = hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null
   const moonToday = hasCoords ? moonTimes(now, station.lat, station.lng, tide.offsetMs) : null
   const moonNext = hasCoords ? nextMoonEvent(now, station.lat, station.lng, tide.offsetMs) : null
   // Which comes next, full or new moon, and in how many days.
@@ -321,11 +323,23 @@ function Tidely() {
 
       {!picking && favs.favorites.length > 0 && (
         <nav className="fav-row no-print" aria-label="Favorite stations">
-          {favs.favorites.map((f) => (
-            <button key={f.id} type="button" className={f.id === stationId ? 'chip on' : 'chip'} onClick={() => setStationId(f.id)}>
-              {f.name.split(',')[0]}
-            </button>
-          ))}
+          {favs.favorites.map((f) => {
+            const g = glances[f.id]
+            const arrow = g?.trend === 'rising' ? '▲' : g?.trend === 'falling' ? '▼' : g?.trend === 'steady' ? '◆' : ''
+            return (
+              <button
+                key={f.id}
+                type="button"
+                className={f.id === stationId ? 'chip fav on' : 'chip fav'}
+                aria-current={f.id === stationId ? 'true' : undefined}
+                aria-label={`${f.name.split(',')[0]}${g ? `: ${g.observed ? 'observed' : 'predicted'} ${ft(g.height)}${g.trend ? `, ${g.trend}` : ''}` : ''}`}
+                onClick={() => setStationId(f.id)}
+              >
+                <span className="fav-name">{f.name.split(',')[0]}</span>
+                {g && <span className="fav-level">{g.observed ? '●' : '○'} {ft(g.height)} {arrow}</span>}
+              </button>
+            )
+          })}
         </nav>
       )}
 
@@ -402,7 +416,7 @@ function Tidely() {
                 </div>
               ))}
             </div>
-            {wx && <Conditions wx={wx} source={weatherGauge?.name} />}
+            {(wx || sun?.sunrise || sun?.sunset) && <Conditions wx={wx ?? {}} source={wx ? weatherGauge?.name : null} sun={sun} offsetMs={tide.offsetMs} />}
             {gaugeNote && <p className="dial-note">{gaugeNote}</p>}
           </section>
 
@@ -429,7 +443,7 @@ function Tidely() {
               <Instruments
                 south={south}
                 now={now}
-                sun={hasCoords ? sunTimes(now, station.lat, station.lng, tide.offsetMs) : null}
+                sun={sun}
                 moon={moonPhase(now)}
                 moonTimes={moonToday}
                 offsetMs={tide.offsetMs}
@@ -524,7 +538,7 @@ function Fold({ icon, title, hint, children }) {
 }
 
 /** Present conditions at the gauge, on one line. */
-function Conditions({ wx, source }) {
+function Conditions({ wx, source, sun, offsetMs }) {
   const p = wx.pressure
   const trend = p?.change3h == null ? '' : p.change3h > 1 ? '↗' : p.change3h < -1 ? '↘' : '→'
   const said = [
@@ -533,8 +547,14 @@ function Conditions({ wx, source }) {
     wx.waterTemp && `sea ${tempText(wx.waterTemp.f)}`,
     p && `barometer ${Math.round(p.mb)} millibars${trend === '↗' ? ', rising' : trend === '↘' ? ', falling' : ''}`,
   ].filter(Boolean).join(', ')
+  const rise = sun?.sunrise ? formatAtStation(sun.sunrise, offsetMs) : null
+  const set = sun?.sunset ? formatAtStation(sun.sunset, offsetMs) : null
+  const sunSaid = [rise && `sunrise ${rise}`, set && `sunset ${set}`].filter(Boolean).join(', ')
+  // Up to four in a row; five or six go in two even rows.
+  const count = [wx.wind, wx.airTemp, wx.waterTemp, p, rise, set].filter(Boolean).length
+  const cols = count > 4 ? Math.ceil(count / 2) : count
   return (
-    <div className="conditions" role="img" aria-label={`${said}${source ? `. From ${source}` : ''}.`}>
+    <div className="conditions" style={{ '--cols': cols }} role="img" aria-label={`${[said && `${said}${source ? `, from ${source}` : ''}`, sunSaid].filter(Boolean).join('. ')}.`}>
       {wx.wind && (
         <span>
           {wx.wind.deg != null && (
@@ -548,6 +568,8 @@ function Conditions({ wx, source }) {
       {wx.airTemp && <span><b>{tempText(wx.airTemp.f)}</b><small>air</small></span>}
       {wx.waterTemp && <span><b>{tempText(wx.waterTemp.f)}</b><small>sea</small></span>}
       {p && <span><b>{Math.round(p.mb)} {trend}</b><small>mb</small></span>}
+      {rise && <span className="sun-cell"><Icon name="sunrise" size="1.5rem" /><b>{rise}</b></span>}
+      {set && <span className="sun-cell"><Icon name="sunset" size="1.5rem" /><b>{set}</b></span>}
       {source && <em>{source}</em>}
     </div>
   )

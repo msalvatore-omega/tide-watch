@@ -1088,3 +1088,15 @@ h1 .icon { color: var(--brand); }
 .map-pop-extra:empty { display: none; }
 .map-level.above { left: 0; top: -35px; transform: translateX(-50%); }
 .map-level.below { left: 0; top: 12px; transform: translateX(-50%); }
+
+/* ---------- Favourites with their tide, sunrise and sunset, surge colours ---------- */
+.chip.fav { display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; min-height: 44px; padding: 4px 14px; line-height: 1.2; flex: none; }
+.fav-name { font-weight: 700; }
+.fav-level { font-size: 0.74rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.conditions { grid-template-columns: repeat(var(--cols, 4), auto); align-items: end; row-gap: 10px; }
+.conditions .sun-cell { align-items: center; color: var(--ink); }
+.conditions .sun-cell .icon { color: #b5770f; }
+.conditions .sun-cell b { font-variant-numeric: tabular-nums; }
+@media (prefers-color-scheme: dark) { .conditions .sun-cell .icon { color: #f2c14e; } }
+.map-pop-surge { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #12263a; }
+.map-pop-surge i { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px #cfd8e0; }

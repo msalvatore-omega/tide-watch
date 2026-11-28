@@ -45,7 +45,8 @@ boat is predicted to touch bottom) and the rules behind the lights.
 terms, and a glossary under ⓘ.
 
 **Map** tab (OpenStreetMap, loaded on demand): each tide gauge in view is labelled with
-the height of tide it is reading now and a rising/falling arrow; tap a station for its
+the height of tide it is reading now and a rising/falling arrow, and coloured by how far
+that is above or below prediction (surge); tap a station for its
 reading, next high and low water, wind and temperatures, then make it your station or
 star it. Shows your own position on request.
 
@@ -77,7 +78,7 @@ npm run dev
 ```
 
 ```bash
-npm test        # 78 unit tests: tide math, alerts, surge, sun/moon, planner, history, map readings, briefing, changelog
+npm test        # 82 unit tests: tide math, alerts, surge, sun/moon, planner, history, map readings, briefing, changelog
 ```
 
 `npm run dev` also prints a Network URL you can open on a phone on the same Wi-Fi.
